@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+
+# Build outputs
+frontend/dist/
+frontend/.vite/
+
+# Python virtualenv
+backend/.venv/
+backend/venv/
+
+# Misc
+.DS_Store
+*.log
