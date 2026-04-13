@@ -17,7 +17,7 @@ import { Navbar } from '@/components/Navbar'
 import { ConfidenceTag } from '@/components/ConfidenceTag'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventQuery } from '@/hooks/useEvents'
 import { generateICS, getGoogleCalendarUrl } from '@/lib/calendar-export'
 import { cn } from '@/lib/utils'
 
@@ -36,9 +36,34 @@ function formatDate(dateStr: string): string {
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>()
-  const event = mockEvents.find((e) => e.id === id)
+  const { data: event, isLoading, isError } = useEventQuery(id)
   const { getRsvpStatus, setRsvpStatus, savedEvents, toggleSave } = useProgress()
   const [confirming, setConfirming] = useState(false)
+
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <main className="container mx-auto max-w-3xl px-4 py-12 text-center">
+          <p className="text-muted-foreground">Loading event details...</p>
+        </main>
+      </>
+    )
+  }
+
+  if (isError) {
+    return (
+      <>
+        <Navbar />
+        <main className="container mx-auto max-w-3xl px-4 py-12 text-center">
+          <p className="text-muted-foreground mb-4">We couldn&apos;t load this event right now.</p>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/events">Back to Events</Link>
+          </Button>
+        </main>
+      </>
+    )
+  }
 
   if (!event) {
     return (

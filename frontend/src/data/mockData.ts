@@ -13,6 +13,7 @@ export interface Event {
   rsvpCount: number
   organizer: string
   whyRecommended?: string
+  externalRsvpUrl?: string | null
 }
 
 export const categories = [
@@ -24,7 +25,7 @@ export type Category = typeof categories[number]
 
 export const mockEvents: Event[] = [
   {
-    id: '1',
+    id: '00000000-0000-4000-8000-000000000001',
     title: 'Transfer Student Welcome Mixer',
     description: 'Join us for a relaxed evening of mingling, snacks, and conversation designed specifically for new transfer students. Whether you\'re from a community college across the state or just transferred campuses, this is your chance to meet others who are navigating the same exciting and sometimes overwhelming transition. Grab a name tag, grab some food, and let\'s make UCSD feel like home. Hosted by the Transfer Student Association, this event happens every quarter and has helped hundreds of transfers find their people.',
     summary: 'A relaxed welcome event for transfer students to meet peers, enjoy snacks, and feel at home at UCSD.',
@@ -38,9 +39,10 @@ export const mockEvents: Event[] = [
     rsvpCount: 47,
     organizer: 'Transfer Student Association (TSA)',
     whyRecommended: 'This event is specifically designed for transfer students like you. It\'s low-pressure, everyone is in the same boat, and there\'s free food to break the ice.',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '2',
+    id: '00000000-0000-4000-8000-000000000002',
     title: 'Resume Workshop: Tech Edition',
     description: 'Stand out in the competitive tech job market with a polished, recruiter-ready resume. This workshop covers everything from formatting and action verbs to tailoring your resume for specific roles at companies like Google, Meta, and local startups. Career advisors and peer mentors from top tech companies will review your resume in small groups and offer personalized feedback. Bring a printed copy or pull it up on your laptop — we\'ll make it shine.',
     summary: 'Level up your tech resume with expert feedback from career advisors and peer mentors from top companies.',
@@ -54,9 +56,10 @@ export const mockEvents: Event[] = [
     rsvpCount: 23,
     organizer: 'Career Services Center',
     whyRecommended: 'Building a strong resume early gives you a huge advantage when internship season hits. Small group format means personalized attention.',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '3',
+    id: '00000000-0000-4000-8000-000000000003',
     title: 'Sunset Yoga at Scripps Pier',
     description: 'Unwind and reset with a guided sunset yoga session overlooking the iconic Scripps Pier. No experience needed — our certified instructor will walk you through every pose from the ground up. This outdoor session is a perfect antidote to midterm stress. Bring a mat if you have one (we have extras), wear comfortable clothes, and prepare to leave feeling lighter. The session ends with a five-minute meditation as the sun dips below the horizon.',
     summary: 'Outdoor yoga session at sunset by Scripps Pier. Guided for all levels — bring a mat or borrow one.',
@@ -70,9 +73,10 @@ export const mockEvents: Event[] = [
     rsvpCount: 31,
     organizer: 'UCSD Wellness Center',
     whyRecommended: 'A peaceful way to decompress and meet people outside of a classroom setting. The ocean view alone is worth it.',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '4',
+    id: '00000000-0000-4000-8000-000000000004',
     title: 'Triton Gaming Night',
     description: 'Whether you\'re a casual player or a hardcore gamer, Triton Gaming Night is the place to be. The Gaming Lounge transforms into an arena of friendly competition with stations set up for everything from Mario Kart to Street Fighter to competitive Valorant scrimmages. It\'s a laid-back environment where you can jump in and play, spectate, or just vibe with fellow gamers. Pizza and snacks provided. Cosplay welcome but not required.',
     summary: 'Casual gaming event with consoles, PC stations, snacks, and fellow gamers. Jump in or just spectate.',
@@ -85,9 +89,10 @@ export const mockEvents: Event[] = [
     imageUrl: '',
     rsvpCount: 62,
     organizer: 'Triton Gaming',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '5',
+    id: '00000000-0000-4000-8000-000000000005',
     title: 'Introduction to Machine Learning',
     description: 'Curious about AI but don\'t know where to start? This beginner-friendly workshop breaks down the fundamentals of machine learning without drowning you in math. Led by ACM UCSD members, the session covers what ML actually is, real-world applications, and a hands-on demo using Python and scikit-learn. Laptops encouraged but not required — you can follow along on a projected screen. Q&A at the end with students who\'ve interned at AI-focused companies.',
     summary: 'Friendly intro to ML concepts with a live Python demo. No prior experience required — just curiosity.',
@@ -101,9 +106,10 @@ export const mockEvents: Event[] = [
     rsvpCount: 55,
     organizer: 'ACM UCSD',
     whyRecommended: 'ML is one of the most in-demand skills in tech right now. Starting here gives you a foundation that will pay off across your academic and professional career.',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '6',
+    id: '00000000-0000-4000-8000-000000000006',
     title: 'Food Truck Friday',
     description: 'Every Friday, Library Walk transforms into a street food festival with rotating food trucks serving everything from gourmet tacos to Korean BBQ bowls to artisan ice cream. It\'s a social experience as much as a culinary one — grab food, find a table, and inevitably end up in a conversation with someone new. This is probably UCSD\'s most popular ongoing tradition. No tickets needed, just show up.',
     summary: 'Weekly food truck gathering on Library Walk. Rotating vendors, open to all, no RSVP needed.',
@@ -116,9 +122,10 @@ export const mockEvents: Event[] = [
     imageUrl: '',
     rsvpCount: 200,
     organizer: 'AS UCSD',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '7',
+    id: '00000000-0000-4000-8000-000000000007',
     title: 'Coffee & Conversation: Transfer Edition',
     description: 'A structured but relaxed conversation series exclusively for transfer students. Each session has a theme — this week\'s topic is "What I Wish I Knew Before Transferring." You\'ll be seated in small groups of 4–6 people with a student facilitator to keep things flowing. Coffee, tea, and light pastries provided. The format ensures nobody feels lost or left out, making it one of the highest-rated social events on campus for transfers who want to make real connections, not just small talk.',
     summary: 'Small-group coffee chat with a structured topic, just for transfer students. Facilitators keep it warm and flowing.',
@@ -132,9 +139,10 @@ export const mockEvents: Event[] = [
     rsvpCount: 18,
     organizer: 'Transfer Student Association (TSA)',
     whyRecommended: 'The structured format takes the awkwardness out of meeting people. You\'ll leave with 4–6 new connections who truly get the transfer experience.',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
   {
-    id: '8',
+    id: '00000000-0000-4000-8000-000000000008',
     title: 'Startup Pitch Night',
     description: 'Watch UCSD students pitch their startup ideas to a panel of local investors, alumni entrepreneurs, and faculty judges. The energy is electric — part Shark Tank, part pep rally. After the pitches, the floor opens up for networking between attendees, founders, and judges. Whether you\'re interested in entrepreneurship, investing, or just want to see what your fellow students are building, this is a fascinating peek into the startup world. Free entry, light refreshments provided.',
     summary: 'Watch student startups pitch to investors and mingle with founders and judges afterward. Buzzy atmosphere.',
@@ -147,6 +155,7 @@ export const mockEvents: Event[] = [
     imageUrl: '',
     rsvpCount: 84,
     organizer: 'Triton Consulting Group',
+    externalRsvpUrl: 'https://forms.gle/example-rsvp-form',
   },
 ]
 

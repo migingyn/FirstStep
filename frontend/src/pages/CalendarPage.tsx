@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Bookmark, CalendarCheck, Clock } from 'lucid
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 import { cn } from '@/lib/utils'
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -43,13 +43,14 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [categoryFilter, setCategoryFilter] = useState('All')
   const { savedEvents, rsvpStatuses, toggleSave } = useProgress()
+  const { data: events = [] } = useEventsQuery()
 
   const year = currentMonth.getFullYear()
   const month = currentMonth.getMonth()
   const days = getCalendarDays(year, month)
 
   // Events that are relevant (saved or rsvp'd)
-  const relevantEvents = mockEvents.filter(
+  const relevantEvents = events.filter(
     (e) =>
       savedEvents.includes(e.id) ||
       ['going', 'pending', 'maybe'].includes(rsvpStatuses[e.id] ?? ''),
