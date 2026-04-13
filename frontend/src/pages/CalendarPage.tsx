@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Bookmark, CalendarCheck, Clock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 import { cn } from '@/lib/utils'
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -43,13 +44,14 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [categoryFilter, setCategoryFilter] = useState('All')
   const { savedEvents, rsvpStatuses, toggleSave } = useProgress()
+  const { data: events = [] } = useEventsQuery()
 
   const year = currentMonth.getFullYear()
   const month = currentMonth.getMonth()
   const days = getCalendarDays(year, month)
 
   // Events that are relevant (saved or rsvp'd)
-  const relevantEvents = mockEvents.filter(
+  const relevantEvents = events.filter(
     (e) =>
       savedEvents.includes(e.id) ||
       ['going', 'pending', 'maybe'].includes(rsvpStatuses[e.id] ?? ''),
@@ -260,7 +262,11 @@ export default function CalendarPage() {
                             </span>
                           )}
                           <button
-                            onClick={() => toggleSave(event.id)}
+                            onClick={() => {
+                              void toggleSave(event.id).catch((error) => {
+                                toast.error(error instanceof Error ? error.message : 'Unable to update saved events right now.')
+                              })
+                            }}
                             aria-label={isSaved ? 'Remove bookmark' : 'Bookmark event'}
                             className={cn(
                               'transition-colors',

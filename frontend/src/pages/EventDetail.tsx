@@ -17,7 +17,7 @@ import { Navbar } from '@/components/Navbar'
 import { ConfidenceTag } from '@/components/ConfidenceTag'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventQuery } from '@/hooks/useEvents'
 import { generateICS, getGoogleCalendarUrl } from '@/lib/calendar-export'
 import { cn } from '@/lib/utils'
 
@@ -30,15 +30,45 @@ function daysUntil(dateStr: string): number {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const date = new Date(`${dateStr}T12:00:00`)
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 }
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>()
-  const event = mockEvents.find((e) => e.id === id)
+  const { data: event, isLoading, isError } = useEventQuery(id)
   const { getRsvpStatus, setRsvpStatus, savedEvents, toggleSave } = useProgress()
   const [confirming, setConfirming] = useState(false)
+
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <main className="container mx-auto max-w-3xl px-4 py-12 text-center">
+          <p className="text-muted-foreground">Loading event details...</p>
+        </main>
+      </>
+    )
+  }
+
+  if (isError) {
+    return (
+      <>
+        <Navbar />
+        <main className="container mx-auto max-w-3xl px-4 py-12 text-center">
+          <p className="text-muted-foreground mb-4">We couldn&apos;t load this event right now.</p>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/events">Back to Events</Link>
+          </Button>
+        </main>
+      </>
+    )
+  }
 
   if (!event) {
     return (
@@ -54,7 +84,6 @@ export default function EventDetail() {
     )
   }
 
-  // Capture in a non-nullable const so closures don't see Event | undefined
   const ev = event
   const status = getRsvpStatus(ev.id)
   const isGoing = status === 'going'
@@ -63,29 +92,49 @@ export default function EventDetail() {
   const isNotGoing = status === 'not-going'
   const isSaved = savedEvents.includes(ev.id)
   const days = daysUntil(ev.date)
+  const externalRsvpUrl = ev.externalRsvpUrl ?? 'https://forms.gle/example-rsvp-form'
 
-  function handleGoing() {
-    setRsvpStatus(ev.id, 'pending')
-    window.open('https://forms.gle/example-rsvp-form', '_blank')
-    toast.info('RSVP form opened in a new tab — come back here and confirm once you\'ve submitted.')
+  async function handleGoing() {
+    try {
+      await setRsvpStatus(ev.id, 'pending')
+      window.open(externalRsvpUrl, '_blank', 'noopener,noreferrer')
+      toast.info('RSVP form opened in a new tab. Come back here and confirm once you submitted it.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update your RSVP right now.')
+    }
   }
 
-  function handleMaybe() {
-    setRsvpStatus(ev.id, 'maybe')
-    toast.success('Saved to your bookmarks')
+  async function handleMaybe() {
+    try {
+      await setRsvpStatus(ev.id, 'maybe')
+      toast.success('Saved to your bookmarks')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update your RSVP right now.')
+    }
   }
 
-  function handleCantGo() {
-    setRsvpStatus(ev.id, 'not-going')
-    toast('No worries, removed from your list')
+  async function handleCantGo() {
+    try {
+      await setRsvpStatus(ev.id, 'not-going')
+      toast('No worries, removed from your list')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update your RSVP right now.')
+    }
   }
 
   function handleConfirmRsvp() {
     setConfirming(true)
-    setTimeout(() => {
-      setRsvpStatus(ev.id, 'going')
-      setConfirming(false)
-      toast.success("You're going! Check your calendar for details.")
+    window.setTimeout(() => {
+      void setRsvpStatus(ev.id, 'going')
+        .then(() => {
+          toast.success("You're going! Check your calendar for details.")
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : 'Unable to confirm your RSVP right now.')
+        })
+        .finally(() => {
+          setConfirming(false)
+        })
     }, 600)
   }
 
@@ -109,7 +158,6 @@ export default function EventDetail() {
     <>
       <Navbar />
       <main className="container mx-auto max-w-3xl px-4 py-8 pb-48 md:pb-24">
-        {/* Back */}
         <Link
           to="/events"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
@@ -118,10 +166,8 @@ export default function EventDetail() {
           Back to events
         </Link>
 
-        {/* Accent line */}
         <div className="h-[3px] w-full rounded-full bg-gradient-to-r from-primary to-primary/60 mb-6" />
 
-        {/* Tags row */}
         <div className="flex flex-wrap gap-2 mb-4">
           <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium text-foreground">
             {ev.category}
@@ -133,18 +179,15 @@ export default function EventDetail() {
           ))}
         </div>
 
-        {/* Title */}
         <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{ev.title}</h1>
         <p className="text-muted-foreground mb-4">by {ev.organizer}</p>
 
-        {/* Confidence tags */}
         <div className="flex flex-wrap gap-2 mb-6">
           {ev.confidenceTags.map((tag) => (
             <ConfidenceTag key={tag} tag={tag} />
           ))}
         </div>
 
-        {/* Why recommended */}
         {ev.whyRecommended && (
           <div className="rounded-2xl bg-teal-light border border-primary/10 p-4 mb-6">
             <p className="text-sm font-semibold text-primary mb-1">Why this is good for you</p>
@@ -152,7 +195,6 @@ export default function EventDetail() {
           </div>
         )}
 
-        {/* Event details */}
         <div className="flex flex-col gap-3 mb-6 text-sm">
           <div className="flex items-center gap-3">
             <Calendar className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -175,13 +217,11 @@ export default function EventDetail() {
           </div>
         </div>
 
-        {/* About */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-foreground mb-3">About this event</h2>
           <p className="text-muted-foreground leading-relaxed">{ev.description}</p>
         </div>
 
-        {/* Pending RSVP banner */}
         {isPending && (
           <div className="rounded-2xl bg-accent/20 border border-accent/30 p-5 mb-6">
             <div className="flex items-center gap-2 mb-2">
@@ -189,23 +229,14 @@ export default function EventDetail() {
               <h3 className="font-semibold text-foreground">Pending RSVP</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Did you submit the RSVP form? Confirm below once you've filled it out.
+              Did you submit the RSVP form? Confirm below once you&apos;ve filled it out.
             </p>
             <div className="flex gap-3 flex-wrap">
-              <Button
-                onClick={handleConfirmRsvp}
-                disabled={confirming}
-                className="rounded-xl"
-              >
+              <Button onClick={handleConfirmRsvp} disabled={confirming} className="rounded-xl">
                 {confirming ? 'Confirming...' : 'I submitted the form'}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1"
-                asChild
-              >
-                <a href="https://forms.gle/example-rsvp-form" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="rounded-xl gap-1" asChild>
+                <a href={externalRsvpUrl} target="_blank" rel="noopener noreferrer">
                   Open form again
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -214,26 +245,16 @@ export default function EventDetail() {
           </div>
         )}
 
-        {/* Going banner */}
         {isGoing && (
           <div className="rounded-2xl bg-teal-light border border-primary/10 p-5 mb-6">
             <div className="flex items-center gap-2 mb-2">
               <PartyPopper className="h-4 w-4 text-primary" aria-hidden="true" />
-              <h3 className="font-semibold text-foreground">You're going!</h3>
+              <h3 className="font-semibold text-foreground">You&apos;re going!</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">Add this event to your calendar so you don't miss it.</p>
+            <p className="text-sm text-muted-foreground mb-4">Add this event to your calendar so you don&apos;t miss it.</p>
             <div className="flex gap-3 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1"
-                asChild
-              >
-                <a
-                  href={getGoogleCalendarUrl(event)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+              <Button variant="outline" size="sm" className="rounded-xl gap-1" asChild>
+                <a href={getGoogleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
                   <CalendarPlus className="h-3.5 w-3.5" />
                   Google Calendar
                 </a>
@@ -252,15 +273,16 @@ export default function EventDetail() {
         )}
       </main>
 
-      {/* Sticky RSVP Bar */}
       <div className="fixed bottom-16 md:bottom-4 left-0 right-0 z-30 px-4 pointer-events-none">
         <div className="mx-auto max-w-3xl pointer-events-auto">
           <div className="bg-card/95 backdrop-blur-lg border rounded-2xl shadow-elevated p-4">
             {isNotGoing ? (
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">You declined this ev.</p>
+                <p className="text-sm text-muted-foreground">You declined this event.</p>
                 <button
-                  onClick={() => setRsvpStatus(ev.id, 'maybe')}
+                  onClick={() => {
+                    void handleMaybe()
+                  }}
                   className="text-sm text-primary hover:underline"
                 >
                   Changed your mind?
@@ -270,7 +292,7 @@ export default function EventDetail() {
               <>
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleGoing}
+                    onClick={() => void handleGoing()}
                     className={cn(
                       'flex-1 rounded-xl',
                       (isGoing || isPending) && 'bg-teal-light text-primary border border-primary/20 hover:bg-teal-light/80',
@@ -280,7 +302,7 @@ export default function EventDetail() {
                     {isGoing ? 'Going' : isPending ? 'Pending...' : 'Going'}
                   </Button>
                   <Button
-                    onClick={handleMaybe}
+                    onClick={() => void handleMaybe()}
                     variant="outline"
                     className={cn(
                       'flex-1 rounded-xl',
@@ -290,17 +312,21 @@ export default function EventDetail() {
                     Maybe
                   </Button>
                   <Button
-                    onClick={handleCantGo}
+                    onClick={() => void handleCantGo()}
                     variant="ghost"
                     className="flex-1 rounded-xl text-muted-foreground"
                   >
-                    Can't Go
+                    Can&apos;t Go
                   </Button>
                 </div>
 
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                   <button
-                    onClick={() => toggleSave(ev.id)}
+                    onClick={() => {
+                      void toggleSave(ev.id).catch((error) => {
+                        toast.error(error instanceof Error ? error.message : 'Unable to update saved events right now.')
+                      })
+                    }}
                     className={cn(
                       'inline-flex items-center gap-1.5 text-xs transition-colors',
                       isSaved ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
@@ -314,7 +340,7 @@ export default function EventDetail() {
                     {isSaved ? 'Saved' : 'Save'}
                   </button>
                   <button
-                    onClick={handleShare}
+                    onClick={() => void handleShare()}
                     className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
