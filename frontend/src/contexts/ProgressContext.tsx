@@ -8,7 +8,6 @@ import {
   applyLocalToggleSave,
   fetchProgressState,
   getEmptyProgressState,
-  hasProgressData,
   persistMapVisited,
   persistSavedEvent,
   type ProgressState,
@@ -24,24 +23,12 @@ interface ProgressContextValue extends ProgressState {
   savedCount: number
 }
 
-const STORAGE_KEY = 'firststep-progress'
-
-function loadState(): ProgressState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as ProgressState
-  } catch {
-    // ignore
-  }
-  return getEmptyProgressState()
-}
-
 const ProgressContext = createContext<ProgressContextValue | null>(null)
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [state, setState] = useState<ProgressState>(loadState)
+  const [state, setState] = useState<ProgressState>(getEmptyProgressState)
   const hydratedUserIdRef = useRef<string | null>(null)
   const stateRef = useRef(state)
   const progressQuery = useProgressDataQuery(user?.id)
@@ -51,27 +38,18 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }, [state])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
-
-  useEffect(() => {
     if (!user?.id || !progressQuery.data || hydratedUserIdRef.current === user.id) {
       return
     }
 
-    setState((current) => {
-      if (hasProgressData(progressQuery.data) || !hasProgressData(current)) {
-        return progressQuery.data
-      }
-
-      return current
-    })
+    setState(progressQuery.data)
     hydratedUserIdRef.current = user.id
   }, [progressQuery.data, user?.id])
 
   useEffect(() => {
     if (!user?.id) {
       hydratedUserIdRef.current = null
+      setState(getEmptyProgressState())
     }
   }, [user?.id])
 
