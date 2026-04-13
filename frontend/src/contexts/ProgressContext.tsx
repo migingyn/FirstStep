@@ -1,14 +1,12 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-
-type RsvpStatus = 'going' | 'pending' | 'maybe' | 'not-going'
-
-interface ProgressState {
-  rsvpedEvents: string[]
-  rsvpStatuses: Record<string, RsvpStatus>
-  savedEvents: string[]
-  dismissedEvents: string[]
-  mapVisited: boolean
-}
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useProgressDataQuery } from '@/hooks/useProgressData'
+import {
+  getEmptyProgressState,
+  hasProgressData,
+  type ProgressState,
+  type RsvpStatus,
+} from '@/lib/progress'
 
 interface ProgressContextValue extends ProgressState {
   setRsvpStatus: (eventId: string, status: RsvpStatus) => void
@@ -28,23 +26,41 @@ function loadState(): ProgressState {
   } catch {
     // ignore
   }
-  return {
-    rsvpedEvents: [],
-    rsvpStatuses: {},
-    savedEvents: [],
-    dismissedEvents: [],
-    mapVisited: false,
-  }
+  return getEmptyProgressState()
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null)
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
   const [state, setState] = useState<ProgressState>(loadState)
+  const hydratedUserIdRef = useRef<string | null>(null)
+  const progressQuery = useProgressDataQuery(user?.id)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
+
+  useEffect(() => {
+    if (!user?.id || !progressQuery.data || hydratedUserIdRef.current === user.id) {
+      return
+    }
+
+    setState((current) => {
+      if (hasProgressData(progressQuery.data) || !hasProgressData(current)) {
+        return progressQuery.data
+      }
+
+      return current
+    })
+    hydratedUserIdRef.current = user.id
+  }, [progressQuery.data, user?.id])
+
+  useEffect(() => {
+    if (!user?.id) {
+      hydratedUserIdRef.current = null
+    }
+  }, [user?.id])
 
   function setRsvpStatus(eventId: string, status: RsvpStatus) {
     setState((prev) => {
