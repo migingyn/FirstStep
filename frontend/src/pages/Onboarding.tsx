@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Users,
   Briefcase,
@@ -13,7 +13,10 @@ import {
   Check,
   ChevronLeft,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/AuthContext'
+import { saveOnboardingProfile } from '@/lib/profiles'
 import { cn } from '@/lib/utils'
 
 const colleges = ['Revelle', 'Muir', 'Marshall', 'Warren', 'Roosevelt', 'Sixth', 'Seventh', 'Eighth']
@@ -38,7 +41,9 @@ const goals = [
 
 export default function Onboarding() {
   const navigate = useNavigate()
+  const { profile, refreshProfile, user } = useAuth()
   const [step, setStep] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
   const [data, setData] = useState({
     name: '',
     college: '',
@@ -46,31 +51,73 @@ export default function Onboarding() {
     goal: '',
   })
 
+  useEffect(() => {
+    if (!profile) {
+      return
+    }
+
+    setData((current) => ({
+      name: current.name || profile.full_name,
+      college: current.college || profile.college,
+      interests: current.interests.length > 0 ? current.interests : profile.interests,
+      goal: current.goal || profile.goal,
+    }))
+  }, [profile])
+
   function canProceed(): boolean {
     switch (step) {
-      case 0: return data.name.trim().length > 0
-      case 1: return data.college !== ''
-      case 2: return data.interests.length > 0
-      case 3: return data.goal !== ''
-      default: return false
+      case 0:
+        return data.name.trim().length > 0
+      case 1:
+        return data.college !== ''
+      case 2:
+        return data.interests.length > 0
+      case 3:
+        return data.goal !== ''
+      default:
+        return false
+    }
+  }
+
+  async function persistProfile(completedOnboarding: boolean) {
+    if (!user) {
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      await saveOnboardingProfile(user.id, {
+        fullName: data.name,
+        college: data.college,
+        interests: data.interests,
+        goal: data.goal,
+        completedOnboarding,
+      })
+      await refreshProfile()
+      navigate('/dashboard')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save onboarding right now.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
   function handleNext() {
     if (step < 3) {
-      setStep((s) => s + 1)
-    } else {
-      localStorage.setItem('firststep-onboarding', JSON.stringify({ ...data, completed: true }))
-      navigate('/dashboard')
+      setStep((current) => current + 1)
+      return
     }
+
+    void persistProfile(true)
   }
 
   function toggleInterest(label: string) {
-    setData((d) => ({
-      ...d,
-      interests: d.interests.includes(label)
-        ? d.interests.filter((i) => i !== label)
-        : [...d.interests, label],
+    setData((current) => ({
+      ...current,
+      interests: current.interests.includes(label)
+        ? current.interests.filter((interest) => interest !== label)
+        : [...current.interests, label],
     }))
   }
 
@@ -84,15 +131,19 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between h-16 px-6 border-b border-border/50">
         <span className="text-lg font-bold text-primary">FirstStep</span>
-        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-          <Link to="/dashboard">Skip for now</Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() => void persistProfile(true)}
+          disabled={isSaving}
+        >
+          Skip for now
         </Button>
       </header>
 
-      {/* Progress bar */}
       <div className="h-0.5 bg-secondary">
         <div
           className="h-full bg-primary transition-all duration-400"
@@ -100,13 +151,8 @@ export default function Onboarding() {
         />
       </div>
 
-      {/* Content */}
       <div className="flex-1 flex items-start justify-center px-4 py-12 overflow-y-auto">
-        <div
-          key={step}
-          className="w-full max-w-lg animate-fade-in"
-        >
-          {/* Step 0 — Name */}
+        <div key={step} className="w-full max-w-lg animate-fade-in">
           {step === 0 && (
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">What should we call you?</h1>
@@ -116,14 +162,13 @@ export default function Onboarding() {
                 placeholder="Your first name"
                 autoFocus
                 value={data.name}
-                onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
+                onChange={(e) => setData((current) => ({ ...current, name: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && canProceed() && handleNext()}
                 className="w-full text-2xl font-medium bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none pb-3 placeholder:text-muted-foreground/50 transition-colors"
               />
             </div>
           )}
 
-          {/* Step 1 — College */}
           {step === 1 && (
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">Which college are you in?</h1>
@@ -134,7 +179,7 @@ export default function Onboarding() {
                   return (
                     <button
                       key={college}
-                      onClick={() => setData((d) => ({ ...d, college }))}
+                      onClick={() => setData((current) => ({ ...current, college }))}
                       className={selectionClass(selected)}
                     >
                       <span className="font-medium text-sm">{college}</span>
@@ -150,7 +195,6 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 2 — Interests */}
           {step === 2 && (
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">What are you into?</h1>
@@ -181,7 +225,6 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 3 — Goal */}
           {step === 3 && (
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -194,7 +237,7 @@ export default function Onboarding() {
                   return (
                     <button
                       key={label}
-                      onClick={() => setData((d) => ({ ...d, goal: label }))}
+                      onClick={() => setData((current) => ({ ...current, goal: label }))}
                       className={cn(
                         'relative flex flex-col items-start rounded-2xl border p-4 cursor-pointer text-left transition-all duration-150',
                         selected
@@ -216,13 +259,12 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Navigation */}
           <div className="flex items-center justify-between mt-10">
             {step > 0 ? (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep((s) => s - 1)}
+                onClick={() => setStep((current) => current - 1)}
                 className="gap-1"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -235,22 +277,18 @@ export default function Onboarding() {
             <span className="text-sm text-muted-foreground">{step + 1} of 4</span>
 
             {step < 3 ? (
-              <Button
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="rounded-full"
-              >
+              <Button onClick={handleNext} disabled={!canProceed()} className="rounded-full">
                 Continue
               </Button>
             ) : (
               <Button
                 variant="coral"
                 onClick={handleNext}
-                disabled={!canProceed()}
+                disabled={!canProceed() || isSaving}
                 className="rounded-full gap-2"
               >
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
-                Get Started
+                {isSaving ? 'Saving...' : 'Get Started'}
               </Button>
             )}
           </div>

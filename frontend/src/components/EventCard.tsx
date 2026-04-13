@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, Users, Bookmark } from 'lucide-react'
+import { toast } from 'sonner'
 import { ConfidenceTag } from '@/components/ConfidenceTag'
 import { useProgress } from '@/contexts/ProgressContext'
 import { cn } from '@/lib/utils'
@@ -22,9 +23,13 @@ export function EventCard({ event }: EventCardProps) {
     if (e.key === 'Enter') handleClick()
   }
 
-  function handleBookmark(e: React.MouseEvent) {
+  async function handleBookmark(e: React.MouseEvent) {
     e.stopPropagation()
-    toggleSave(event.id)
+    try {
+      await toggleSave(event.id)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update saved events right now.')
+    }
   }
 
   return (

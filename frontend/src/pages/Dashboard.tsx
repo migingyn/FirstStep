@@ -11,11 +11,12 @@ import { Navbar } from '@/components/Navbar'
 import { EventCard } from '@/components/EventCard'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
   const { hasAttendedFirst, savedCount, mapVisited } = useProgress()
+  const { data: events = [], isLoading, isError } = useEventsQuery()
 
   const tasks = [
     {
@@ -46,8 +47,8 @@ export default function Dashboard() {
 
   const completedCount = tasks.filter((t) => t.done).length
   const allDone = completedCount === tasks.length
-  const recommended = mockEvents.filter((e) => e.whyRecommended).slice(0, 4)
-  const goodFirst = mockEvents.filter((e) => e.confidenceTags.includes('Good First Event'))
+  const recommended = events.filter((event) => event.whyRecommended).slice(0, 4)
+  const goodFirst = events.filter((event) => event.confidenceTags.includes('Good First Event'))
 
   return (
     <>
@@ -142,11 +143,17 @@ export default function Dashboard() {
               See all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recommended.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading events...</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">We couldn&apos;t load recommended events right now.</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommended.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Good First Events */}
@@ -162,11 +169,17 @@ export default function Dashboard() {
               See all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {goodFirst.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading events...</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">We couldn&apos;t load good first events right now.</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {goodFirst.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </>

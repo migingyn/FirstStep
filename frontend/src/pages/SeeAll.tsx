@@ -2,8 +2,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { EventCard } from '@/components/EventCard'
-import { mockEvents } from '@/data/mockData'
 import type { Event } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 
 const sectionConfig: Record<string, { title: string; description: string; filter: (e: Event) => boolean }> = {
   recommended: {
@@ -20,6 +20,7 @@ const sectionConfig: Record<string, { title: string; description: string; filter
 
 export default function SeeAll() {
   const { section } = useParams<{ section: string }>()
+  const { data: events = [], isLoading, isError } = useEventsQuery()
   const config = section ? sectionConfig[section] : undefined
 
   if (!config) {
@@ -36,7 +37,7 @@ export default function SeeAll() {
     )
   }
 
-  const events = mockEvents.filter(config.filter)
+  const filteredEvents = events.filter(config.filter)
 
   return (
     <>
@@ -56,13 +57,19 @@ export default function SeeAll() {
           <p className="text-muted-foreground">{config.description}</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {events.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading events...</p>
+        ) : isError ? (
+          <p className="text-sm text-destructive">We couldn&apos;t load this section right now.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        )}
 
-        {events.length === 0 && (
+        {filteredEvents.length === 0 && !isLoading && !isError && (
           <div className="text-center py-16 text-muted-foreground">
             <p>No events found in this section.</p>
           </div>
