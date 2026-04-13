@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Home, Compass, CalendarDays, Map, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -20,10 +21,16 @@ const mobileLinks = [
 
 export function Navbar() {
   const location = useLocation()
+  const { isAuthenticated, profile, user } = useAuth()
 
   // Don't show navbar on landing/auth/onboarding pages
   const hidden = ['/', '/auth', '/onboarding'].includes(location.pathname)
   if (hidden) return null
+
+  const profileInitial =
+    profile?.full_name.trim().charAt(0) ||
+    user?.email?.trim()?.charAt(0)?.toUpperCase() ||
+    'F'
 
   return (
     <>
@@ -57,15 +64,17 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <Button asChild variant="coral" size="sm" className="hidden md:inline-flex rounded-full">
-              <Link to="/auth">Sign Up</Link>
-            </Button>
+            {!isAuthenticated && (
+              <Button asChild variant="coral" size="sm" className="hidden md:inline-flex rounded-full">
+                <Link to="/auth">Sign Up</Link>
+              </Button>
+            )}
             <Link
               to="/profile"
               className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
               aria-label="Profile"
             >
-              J
+              {profileInitial}
             </Link>
           </div>
         </div>

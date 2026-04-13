@@ -1,29 +1,125 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  clearPendingAuthFlow,
+  getAuthRedirectUrl,
+  getPendingAuthFlow,
+  setPendingAuthFlow,
+} from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [showPass, setShowPass] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, isLoading, profile } = useAuth()
 
-  function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return
+    }
+
+    const pendingFlow = getPendingAuthFlow()
+    const from = (location.state as { from?: string } | null)?.from
+
+    if (pendingFlow === 'signup' || (pendingFlow === 'google' && !profile?.completed_onboarding)) {
+      clearPendingAuthFlow()
+      navigate('/onboarding', { replace: true })
+      return
+    }
+
+    clearPendingAuthFlow()
+    navigate(from ?? '/dashboard', { replace: true })
+  }, [isAuthenticated, isLoading, location.state, navigate, profile?.completed_onboarding])
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (mode === 'signup') {
-      navigate('/onboarding')
-    } else {
+    setSubmitting(true)
+
+    try {
+      if (mode === 'signup') {
+        setPendingAuthFlow('signup')
+
+        const { data, error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: {
+              full_name: form.name,
+            },
+          },
+        })
+
+        if (error) {
+          throw error
+        }
+
+        if (!data.session) {
+          clearPendingAuthFlow()
+          toast.success('Account created. Check your email to finish signing in, then continue onboarding.')
+          setMode('login')
+          return
+        }
+
+        navigate('/onboarding')
+        return
+      }
+
+      setPendingAuthFlow('login')
+      const { error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      })
+
+      if (error) {
+        throw error
+      }
+
       navigate('/dashboard')
+    } catch (error) {
+      clearPendingAuthFlow()
+      toast.error(error instanceof Error ? error.message : 'Unable to complete authentication.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      setPendingAuthFlow('google')
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: getAuthRedirectUrl(),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      clearPendingAuthFlow()
+      toast.error(error instanceof Error ? error.message : 'Unable to start Google sign-in.')
     }
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-center h-16 border-b border-border/50 bg-card/80 backdrop-blur-lg">
         <Link to="/" className="text-xl font-bold text-primary tracking-tight">
           FirstStep
@@ -44,21 +140,20 @@ export default function Auth() {
           </div>
 
           <div className="bg-card rounded-2xl border shadow-elevated p-8">
-            {/* Mode toggle */}
             <div className="flex bg-secondary rounded-full p-1 mb-7">
-              {(['login', 'signup'] as const).map((m) => (
+              {(['login', 'signup'] as const).map((viewMode) => (
                 <button
-                  key={m}
+                  key={viewMode}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => setMode(viewMode)}
                   className={cn(
                     'flex-1 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
-                    mode === m
+                    mode === viewMode
                       ? 'bg-foreground text-background shadow-sm'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {m === 'login' ? 'Log In' : 'Sign Up'}
+                  {viewMode === 'login' ? 'Log In' : 'Sign Up'}
                 </button>
               ))}
             </div>
@@ -77,7 +172,7 @@ export default function Auth() {
                       placeholder="Jordan Rivera"
                       className="pl-10"
                       value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
                       required
                     />
                   </div>
@@ -97,7 +192,7 @@ export default function Auth() {
                     placeholder="you@ucsd.edu"
                     className="pl-10"
                     value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
                     required
                   />
                 </div>
@@ -123,15 +218,15 @@ export default function Auth() {
                   <Input
                     id="auth-password"
                     type={showPass ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder="........"
                     className="pl-10 pr-10"
                     value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    onChange={(e) => setForm((current) => ({ ...current, password: e.target.value }))}
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPass((s) => !s)}
+                    onClick={() => setShowPass((current) => !current)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     aria-label={showPass ? 'Hide password' : 'Show password'}
                   >
@@ -140,20 +235,37 @@ export default function Auth() {
                 </div>
               </div>
 
-              <Button type="submit" variant="coral" size="lg" className="rounded-full w-full mt-1">
-                {mode === 'login' ? 'Log In' : 'Create Account'}
+              <Button
+                type="submit"
+                variant="coral"
+                size="lg"
+                className="rounded-full w-full mt-1"
+                disabled={submitting}
+              >
+                {submitting
+                  ? mode === 'login'
+                    ? 'Logging In...'
+                    : 'Creating Account...'
+                  : mode === 'login'
+                    ? 'Log In'
+                    : 'Create Account'}
               </Button>
             </form>
 
-            {/* Divider */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-[1px] bg-border" />
               <span className="text-xs text-muted-foreground">or</span>
               <div className="flex-1 h-[1px] bg-border" />
             </div>
 
-            {/* Google button */}
-            <Button variant="outline" size="lg" className="w-full rounded-full gap-3" type="button">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full rounded-full gap-3"
+              type="button"
+              onClick={() => void handleGoogleSignIn()}
+              disabled={submitting}
+            >
               <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -175,7 +287,6 @@ export default function Auth() {
               Continue with Google
             </Button>
 
-            {/* Toggle */}
             <p className="text-center text-sm text-muted-foreground mt-6">
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               <button
