@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Bookmark, CalendarCheck, Clock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
@@ -261,7 +262,11 @@ export default function CalendarPage() {
                             </span>
                           )}
                           <button
-                            onClick={() => toggleSave(event.id)}
+                            onClick={() => {
+                              void toggleSave(event.id).catch((error) => {
+                                toast.error(error instanceof Error ? error.message : 'Unable to update saved events right now.')
+                              })
+                            }}
                             aria-label={isSaved ? 'Remove bookmark' : 'Bookmark event'}
                             className={cn(
                               'transition-colors',
