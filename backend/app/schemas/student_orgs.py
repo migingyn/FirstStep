@@ -8,3 +8,4 @@ class StudentOrgOut(BaseModel):
     description: str
     website: str | None = None
     instagram: str | None = None
+    category: str | None = None

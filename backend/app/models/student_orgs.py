@@ -6,6 +6,7 @@ STUDENT_ORGS = [
         "description": "The official voice of transfer students at UCSD. We advocate for transfer resources, host social events, and build community for students navigating the transfer experience.",
         "website": "https://tsa.ucsd.edu",
         "instagram": "@ucsd_tsa",
+        "category": "Transfer",
     },
     {
         "id": "2",
@@ -14,6 +15,7 @@ STUDENT_ORGS = [
         "description": "The largest computer science organization at UCSD. We run workshops, hackathons, and industry panels to help students grow technically and professionally.",
         "website": "https://acmucsd.com",
         "instagram": "@acmucsd",
+        "category": "Academic",
     },
     {
         "id": "3",
@@ -22,6 +24,7 @@ STUDENT_ORGS = [
         "description": "UCSD's premier gaming community. We host weekly gaming nights, esports tournaments, and casual hangout sessions for gamers of all types.",
         "website": None,
         "instagram": "@tritongaming_ucsd",
+        "category": "Social",
     },
     {
         "id": "4",
@@ -30,6 +33,7 @@ STUDENT_ORGS = [
         "description": "Empowering women and allies in engineering. We connect students with mentors, host professional development workshops, and advocate for inclusion in tech.",
         "website": "https://swe.ucsd.edu",
         "instagram": "@swe_ucsd",
+        "category": "Professional",
     },
     {
         "id": "5",
@@ -38,6 +42,7 @@ STUDENT_ORGS = [
         "description": "Learn salsa, bachata, and other Latin dances in a welcoming environment. No partner or experience required. Free lessons every week.",
         "website": None,
         "instagram": "@ucsd_salsa",
+        "category": "Arts & Culture",
     },
     {
         "id": "6",
@@ -46,6 +51,7 @@ STUDENT_ORGS = [
         "description": "A student-run consulting organization providing pro-bono consulting services to local nonprofits and startups while developing business skills.",
         "website": "https://tcg.ucsd.edu",
         "instagram": "@tcg_ucsd",
+        "category": "Professional",
     },
     {
         "id": "7",
@@ -54,6 +60,7 @@ STUDENT_ORGS = [
         "description": "Celebrating the rich diversity of UCSD's international community. We host cultural events, provide resources, and build bridges across nationalities.",
         "website": None,
         "instagram": "@isa_ucsd",
+        "category": "Cultural",
     },
     {
         "id": "8",
@@ -62,5 +69,6 @@ STUDENT_ORGS = [
         "description": "UCSD's premier design organization, connecting students passionate about UX, product design, and visual communication through workshops and speaker events.",
         "website": "https://designco.ucsd.edu",
         "instagram": "@designco_ucsd",
+        "category": "Creative",
     },
 ]
