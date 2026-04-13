@@ -1,17 +1,23 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProgressDataQuery } from '@/hooks/useProgressData'
 import {
+  applyEventRsvpStatus,
+  applyLocalRsvpTransition,
+  applyLocalToggleSave,
+  fetchProgressState,
   getEmptyProgressState,
   hasProgressData,
+  persistSavedEvent,
   type ProgressState,
   type RsvpStatus,
 } from '@/lib/progress'
 
 interface ProgressContextValue extends ProgressState {
-  setRsvpStatus: (eventId: string, status: RsvpStatus) => void
+  setRsvpStatus: (eventId: string, status: RsvpStatus) => Promise<void>
   getRsvpStatus: (eventId: string) => RsvpStatus | null
-  toggleSave: (eventId: string) => void
+  toggleSave: (eventId: string) => Promise<void>
   markMapVisited: () => void
   hasAttendedFirst: boolean
   savedCount: number
@@ -33,9 +39,15 @@ const ProgressContext = createContext<ProgressContextValue | null>(null)
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [state, setState] = useState<ProgressState>(loadState)
   const hydratedUserIdRef = useRef<string | null>(null)
+  const stateRef = useRef(state)
   const progressQuery = useProgressDataQuery(user?.id)
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
@@ -62,49 +74,55 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id])
 
-  function setRsvpStatus(eventId: string, status: RsvpStatus) {
-    setState((prev) => {
-      const newStatuses = { ...prev.rsvpStatuses, [eventId]: status }
-      const newRsvped = Object.entries(newStatuses)
-        .filter(([, s]) => s === 'going')
-        .map(([id]) => id)
-
-      let newSaved = [...prev.savedEvents]
-      let newDismissed = [...prev.dismissedEvents]
-
-      if (status === 'pending' || status === 'maybe') {
-        if (!newSaved.includes(eventId)) newSaved.push(eventId)
-      } else if (status === 'not-going') {
-        newSaved = newSaved.filter((id) => id !== eventId)
-        if (!newDismissed.includes(eventId)) newDismissed.push(eventId)
-      } else if (status === 'going') {
-        newDismissed = newDismissed.filter((id) => id !== eventId)
-      }
-
-      return {
-        ...prev,
-        rsvpStatuses: newStatuses,
-        rsvpedEvents: newRsvped,
-        savedEvents: newSaved,
-        dismissedEvents: newDismissed,
-      }
+  async function syncFromSupabase(userId: string) {
+    const latestState = await queryClient.fetchQuery({
+      queryKey: ['progress', userId],
+      queryFn: () => fetchProgressState(userId),
     })
+
+    setState(latestState)
+  }
+
+  async function setRsvpStatus(eventId: string, status: RsvpStatus) {
+    const previousState = stateRef.current
+    setState((current) => applyLocalRsvpTransition(current, eventId, status))
+
+    if (!user?.id) {
+      return
+    }
+
+    try {
+      await applyEventRsvpStatus(eventId, status)
+      await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
+      await syncFromSupabase(user.id)
+    } catch (error) {
+      setState(previousState)
+      throw error
+    }
   }
 
   function getRsvpStatus(eventId: string): RsvpStatus | null {
     return state.rsvpStatuses[eventId] ?? null
   }
 
-  function toggleSave(eventId: string) {
-    setState((prev) => {
-      const isSaved = prev.savedEvents.includes(eventId)
-      return {
-        ...prev,
-        savedEvents: isSaved
-          ? prev.savedEvents.filter((id) => id !== eventId)
-          : [...prev.savedEvents, eventId],
-      }
-    })
+  async function toggleSave(eventId: string) {
+    const previousState = stateRef.current
+    const shouldSave = !previousState.savedEvents.includes(eventId)
+
+    setState((current) => applyLocalToggleSave(current, eventId))
+
+    if (!user?.id) {
+      return
+    }
+
+    try {
+      await persistSavedEvent(user.id, eventId, shouldSave)
+      await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
+      await syncFromSupabase(user.id)
+    } catch (error) {
+      setState(previousState)
+      throw error
+    }
   }
 
   function markMapVisited() {
