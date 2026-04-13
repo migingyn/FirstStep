@@ -196,3 +196,17 @@ export async function persistSavedEvent(userId: string, eventId: string, shouldS
     throw error
   }
 }
+
+export async function persistMapVisited(userId: string) {
+  const { error } = await supabase
+    .from('user_progress')
+    .update({
+      map_visited: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+
+  if (error) {
+    throw error
+  }
+}

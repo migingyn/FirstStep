@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, Search, ChevronRight, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/Navbar'
 import { Input } from '@/components/ui/input'
 import { useProgress } from '@/contexts/ProgressContext'
@@ -26,7 +27,9 @@ export default function MapPage() {
   const [panelOpen, setPanelOpen] = useState(true)
 
   useEffect(() => {
-    markMapVisited()
+    void markMapVisited().catch((error) => {
+      toast.error(error instanceof Error ? error.message : 'Unable to save map progress right now.')
+    })
   }, [markMapVisited])
 
   const filteredLocations = locationData.filter((loc) => {

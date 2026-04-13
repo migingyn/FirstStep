@@ -9,6 +9,7 @@ import {
   fetchProgressState,
   getEmptyProgressState,
   hasProgressData,
+  persistMapVisited,
   persistSavedEvent,
   type ProgressState,
   type RsvpStatus,
@@ -18,7 +19,7 @@ interface ProgressContextValue extends ProgressState {
   setRsvpStatus: (eventId: string, status: RsvpStatus) => Promise<void>
   getRsvpStatus: (eventId: string) => RsvpStatus | null
   toggleSave: (eventId: string) => Promise<void>
-  markMapVisited: () => void
+  markMapVisited: () => Promise<void>
   hasAttendedFirst: boolean
   savedCount: number
 }
@@ -125,8 +126,22 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  function markMapVisited() {
-    setState((prev) => ({ ...prev, mapVisited: true }))
+  async function markMapVisited() {
+    const previousState = stateRef.current
+    setState((current) => ({ ...current, mapVisited: true }))
+
+    if (!user?.id) {
+      return
+    }
+
+    try {
+      await persistMapVisited(user.id)
+      await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
+      await syncFromSupabase(user.id)
+    } catch (error) {
+      setState(previousState)
+      throw error
+    }
   }
 
   const value: ProgressContextValue = {
