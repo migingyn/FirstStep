@@ -4,22 +4,23 @@ import { MapPin, Search, ChevronRight, X } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { Input } from '@/components/ui/input'
 import { useProgress } from '@/contexts/ProgressContext'
-import { mockEvents } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 import { cn } from '@/lib/utils'
 
 const locationData = [
-  { name: 'Price Center East Ballroom', x: 42, y: 38, eventIds: ['1'] },
-  { name: 'Career Services Center, Room 210', x: 35, y: 52, eventIds: ['2'] },
-  { name: 'Scripps Pier Lawn', x: 78, y: 72, eventIds: ['3'] },
-  { name: 'Student Center, Gaming Lounge', x: 45, y: 42, eventIds: ['4'] },
-  { name: 'CSE Building, Room 1202', x: 55, y: 30, eventIds: ['5'] },
-  { name: 'Library Walk', x: 48, y: 45, eventIds: ['6'] },
-  { name: 'Sixth College Living Room', x: 62, y: 25, eventIds: ['7'] },
-  { name: 'The Basement (Entrepreneurship Center)', x: 40, y: 55, eventIds: ['8'] },
+  { name: 'Price Center East Ballroom', x: 42, y: 38 },
+  { name: 'Career Services Center, Room 210', x: 35, y: 52 },
+  { name: 'Scripps Pier Lawn', x: 78, y: 72 },
+  { name: 'Student Center, Gaming Lounge', x: 45, y: 42 },
+  { name: 'CSE Building, Room 1202', x: 55, y: 30 },
+  { name: 'Library Walk', x: 48, y: 45 },
+  { name: 'Sixth College Living Room', x: 62, y: 25 },
+  { name: 'The Basement (Entrepreneurship Center)', x: 40, y: 55 },
 ]
 
 export default function MapPage() {
   const { markMapVisited } = useProgress()
+  const { data: events = [] } = useEventsQuery()
   const [activeLocation, setActiveLocation] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [panelOpen, setPanelOpen] = useState(true)
@@ -32,9 +33,12 @@ export default function MapPage() {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     if (loc.name.toLowerCase().includes(q)) return true
-    return loc.eventIds.some((id) => {
-      const event = mockEvents.find((e) => e.id === id)
-      return event && (
+    return events.some((event) => {
+      if (event.location !== loc.name) {
+        return false
+      }
+
+      return (
         event.title.toLowerCase().includes(q) ||
         event.category.toLowerCase().includes(q) ||
         event.organizer.toLowerCase().includes(q)
@@ -84,7 +88,7 @@ export default function MapPage() {
             <div className="flex-1 overflow-y-auto">
               {filteredLocations.map((loc) => {
                 const isActive = activeLocation === loc.name
-                const events = loc.eventIds.map((id) => mockEvents.find((e) => e.id === id)).filter(Boolean)
+                const locationEvents = events.filter((event) => event.location === loc.name)
 
                 return (
                   <div key={loc.name}>
@@ -110,7 +114,7 @@ export default function MapPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{loc.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {loc.eventIds.length} event{loc.eventIds.length !== 1 ? 's' : ''}
+                          {locationEvents.length} event{locationEvents.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <ChevronRight
@@ -125,7 +129,7 @@ export default function MapPage() {
                     {/* Expanded events */}
                     {isActive && (
                       <div className="bg-secondary/30 px-4 py-2 border-b border-border/30">
-                        {events.map((event) =>
+                        {locationEvents.map((event) =>
                           event ? (
                             <Link
                               key={event.id}
@@ -207,7 +211,7 @@ export default function MapPage() {
                       : 'bg-card border-2 border-primary text-primary hover:scale-110 hover:shadow-card-hover',
                   )}
                 >
-                  {loc.eventIds.length}
+                  {events.filter((event) => event.location === loc.name).length}
                 </div>
                 {/* Tooltip */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 pointer-events-none">

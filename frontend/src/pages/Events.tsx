@@ -4,13 +4,14 @@ import { Navbar } from '@/components/Navbar'
 import { EventCard } from '@/components/EventCard'
 import { CategoryPills } from '@/components/CategoryPills'
 import { Input } from '@/components/ui/input'
-import { mockEvents } from '@/data/mockData'
+import { useEventsQuery } from '@/hooks/useEvents'
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const { data: events = [], isLoading, isError } = useEventsQuery()
 
-  const filtered = mockEvents.filter((event) => {
+  const filtered = events.filter((event) => {
     const matchesCategory =
       selectedCategory === 'All' || event.category === selectedCategory
     const q = searchQuery.toLowerCase()
@@ -64,7 +65,17 @@ export default function Events() {
         </div>
 
         {/* Grid */}
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <h3 className="font-semibold text-foreground mb-1">Loading events</h3>
+            <p className="text-sm text-muted-foreground">Fetching the latest event list from Supabase.</p>
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <h3 className="font-semibold text-foreground mb-1">Unable to load events</h3>
+            <p className="text-sm text-muted-foreground">Please try again in a moment.</p>
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((event) => (
               <EventCard key={event.id} event={event} />
