@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   User,
   LogOut,
@@ -8,20 +9,13 @@ import {
   Lock,
   Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { useAuth } from '@/contexts/AuthContext'
 import { useProgress } from '@/contexts/ProgressContext'
 import { cn } from '@/lib/utils'
-
-const profile = {
-  name: 'Jordan Rivera',
-  email: 'jrivera@ucsd.edu',
-  major: 'Computer Science',
-  college: 'Warren College',
-  year: 'Junior (Transfer)',
-  interests: ['Social Events', 'Career & Networking', 'Academic', 'Casual Hangouts'],
-}
 
 type SettingsSection = 'notifications' | 'privacy' | 'security' | 'danger' | null
 
@@ -34,8 +28,17 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function SwitchRow({ label, description, defaultChecked = false }: { label: string; description?: string; defaultChecked?: boolean }) {
+function SwitchRow({
+  label,
+  description,
+  defaultChecked = false,
+}: {
+  label: string
+  description?: string
+  defaultChecked?: boolean
+}) {
   const [checked, setChecked] = useState(defaultChecked)
+
   return (
     <div className="flex items-start justify-between gap-4 py-3">
       <div>
@@ -49,30 +52,55 @@ function SwitchRow({ label, description, defaultChecked = false }: { label: stri
 
 export default function Profile() {
   const { rsvpedEvents, savedCount } = useProgress()
+  const { profile, profileError, signOut, user } = useAuth()
   const [openSection, setOpenSection] = useState<SettingsSection>(null)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const navigate = useNavigate()
 
-  function toggleSection(s: SettingsSection) {
-    setOpenSection((prev) => (prev === s ? null : s))
+  const displayName = profile?.full_name || 'Your profile'
+  const displayCollege = profile?.college || 'College not set'
+  const displayYear = profile?.year || 'Year not set'
+  const displayInterests = profile?.interests ?? []
+
+  function toggleSection(section: SettingsSection) {
+    setOpenSection((current) => (current === section ? null : section))
+  }
+
+  async function handleSignOut() {
+    setIsSigningOut(true)
+
+    try {
+      await signOut()
+      navigate('/auth', { replace: true })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to sign out right now.')
+    } finally {
+      setIsSigningOut(false)
+    }
   }
 
   return (
     <>
       <Navbar />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24 md:pb-8 space-y-6">
-        {/* Avatar & Name */}
         <div className="flex flex-col items-center text-center gap-3 py-6">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <User className="h-10 w-10 text-primary" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{profile.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{displayName}</h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              {profile.college} · {profile.year}
+              {displayCollege} · {displayYear}
             </p>
           </div>
         </div>
 
-        {/* Stats */}
+        {profileError && (
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {profileError}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border bg-card shadow-card p-5 text-center">
             <p className="text-3xl font-bold text-primary">{rsvpedEvents.length}</p>
@@ -84,39 +112,40 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Profile Details */}
         <div className="rounded-2xl border bg-card shadow-card p-6 space-y-5">
           <h2 className="font-semibold text-foreground">Profile Details</h2>
           <div className="grid sm:grid-cols-2 gap-5">
-            <ReadonlyField label="Name" value={profile.name} />
-            <ReadonlyField label="Email" value={profile.email} />
-            <ReadonlyField label="Major" value={profile.major} />
-            <ReadonlyField label="College" value={profile.college} />
+            <ReadonlyField label="Name" value={displayName} />
+            <ReadonlyField label="Email" value={user?.email ?? 'Email unavailable'} />
+            <ReadonlyField label="Major" value={profile?.major ?? 'Not set'} />
+            <ReadonlyField label="College" value={displayCollege} />
           </div>
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-2">
               Interests
             </span>
             <div className="flex flex-wrap gap-2">
-              {profile.interests.map((interest) => (
-                <span
-                  key={interest}
-                  className="rounded-full border border-border/60 bg-secondary px-3 py-1 text-xs font-medium text-foreground"
-                >
-                  {interest}
-                </span>
-              ))}
+              {displayInterests.length > 0 ? (
+                displayInterests.map((interest) => (
+                  <span
+                    key={interest}
+                    className="rounded-full border border-border/60 bg-secondary px-3 py-1 text-xs font-medium text-foreground"
+                  >
+                    {interest}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">No interests saved yet.</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Account Settings */}
         <div className="rounded-2xl border bg-card shadow-card overflow-hidden">
           <div className="px-6 py-4 border-b border-border/50">
             <h2 className="font-semibold text-foreground">Account Settings</h2>
           </div>
 
-          {/* Notifications */}
           <AccordionSection
             icon={Bell}
             title="Notifications"
@@ -129,7 +158,6 @@ export default function Profile() {
             <SwitchRow label="Email Digest" description="Weekly email summary of upcoming events" defaultChecked={false} />
           </AccordionSection>
 
-          {/* Privacy */}
           <AccordionSection
             icon={Shield}
             title="Privacy"
@@ -141,7 +169,6 @@ export default function Profile() {
             <SwitchRow label="Show Interests" description="Display your interests on your profile" defaultChecked={true} />
           </AccordionSection>
 
-          {/* Security */}
           <AccordionSection
             icon={Lock}
             title="Security"
@@ -155,7 +182,6 @@ export default function Profile() {
             </div>
           </AccordionSection>
 
-          {/* Danger Zone */}
           <AccordionSection
             icon={Trash2}
             title="Danger Zone"
@@ -174,14 +200,15 @@ export default function Profile() {
           </AccordionSection>
         </div>
 
-        {/* Log Out */}
         <Button
           variant="ghost"
           size="lg"
           className="w-full rounded-2xl text-destructive hover:bg-destructive/5 hover:text-destructive gap-2"
+          onClick={() => void handleSignOut()}
+          disabled={isSigningOut}
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
-          Log Out
+          {isSigningOut ? 'Logging Out...' : 'Log Out'}
         </Button>
       </main>
     </>
@@ -197,7 +224,14 @@ interface AccordionSectionProps {
   danger?: boolean
 }
 
-function AccordionSection({ icon: Icon, title, open, onToggle, children, danger = false }: AccordionSectionProps) {
+function AccordionSection({
+  icon: Icon,
+  title,
+  open,
+  onToggle,
+  children,
+  danger = false,
+}: AccordionSectionProps) {
   return (
     <div className="border-b border-border/50 last:border-0">
       <button
@@ -219,11 +253,7 @@ function AccordionSection({ icon: Icon, title, open, onToggle, children, danger 
           aria-hidden="true"
         />
       </button>
-      {open && (
-        <div className="px-6 pb-4 divide-y divide-border/50">
-          {children}
-        </div>
-      )}
+      {open && <div className="px-6 pb-4 divide-y divide-border/50">{children}</div>}
     </div>
   )
 }
