@@ -1,8 +1,12 @@
 import { ExternalLink, AtSign, Globe } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { studentOrgs } from '@/data/mockData'
+import { useStudentOrgsQuery } from '@/hooks/useStudentOrgs'
 
 export default function StudentOrgs() {
+  const { data, isLoading, isError } = useStudentOrgsQuery()
+  const orgs = data ?? studentOrgs
+
   return (
     <>
       <Navbar />
@@ -17,9 +21,19 @@ export default function StudentOrgs() {
           </p>
         </div>
 
+        {isLoading && (
+          <p className="text-sm text-muted-foreground mb-6">Loading organizations from the backend...</p>
+        )}
+
+        {isError && (
+          <p className="text-sm text-muted-foreground mb-6">
+            Backend unavailable right now, showing the built-in organization list instead.
+          </p>
+        )}
+
         {/* Grid */}
         <div className="grid sm:grid-cols-2 gap-6">
-          {studentOrgs.map((org) => (
+          {orgs.map((org) => (
             <div
               key={org.id}
               className="rounded-2xl border bg-card shadow-card p-6 flex flex-col gap-4 hover:shadow-card-hover transition-shadow duration-200"
