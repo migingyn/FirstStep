@@ -28,7 +28,7 @@ export default function SeeAll() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = usePaginatedEvents(100)
+  } = usePaginatedEvents(60)
   const config = section ? sectionConfig[section] : undefined
 
   // Flatten all pages into a single array for filtering

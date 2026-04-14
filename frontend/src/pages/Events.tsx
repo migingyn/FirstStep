@@ -17,7 +17,7 @@ export default function Events() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = usePaginatedEvents(100) // Load 100 events per page (effectively one page)
+  } = usePaginatedEvents(60) // Load 60 events per page
 
   // Flatten all pages into a single array for filtering
   const allEvents = data?.pages.flat() ?? []
