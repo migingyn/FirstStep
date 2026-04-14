@@ -26,6 +26,7 @@ export interface Event {
 export const categories = [
   'All', 'Social', 'Academic', 'Career', 'Sports & Fitness',
   'Arts & Culture', 'Workshops', 'Networking', 'Food & Drink',
+  'Wellness',
 ] as const
 
 export type Category = typeof categories[number]

@@ -1,30 +1,23 @@
 import { useState } from 'react'
-import { Search, Loader2 } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { EventCard } from '@/components/EventCard'
 import { CategoryPills } from '@/components/CategoryPills'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { usePaginatedEvents } from '@/hooks/useEvents'
+import { useEventsQuery } from '@/hooks/useEvents'
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = usePaginatedEvents(12) // Load 12 events per page
+  const { data: allEvents = [], isLoading, isError } = useEventsQuery()
 
-  // Flatten all pages into a single array for filtering
-  const allEvents = data?.pages.flat() ?? []
+  // Limit to first 100 events for performance when filtering
+  const events = allEvents.slice(0, 100)
 
-  const filtered = allEvents.filter((event) => {
+  const filtered = events.filter((event) => {
     const matchesCategory =
-      selectedCategory === 'All' || event.category === selectedCategory
+      selectedCategory === 'All' ||
+      event.category.toLowerCase() === selectedCategory.toLowerCase()
     const q = searchQuery.toLowerCase()
     const matchesSearch =
       !searchQuery ||
@@ -72,7 +65,6 @@ export default function Events() {
             className="text-sm text-muted-foreground"
           >
             {filtered.length} {filtered.length === 1 ? 'event' : 'events'} loaded
-            {hasNextPage && ' • More available'}
           </span>
         </div>
 
@@ -88,35 +80,11 @@ export default function Events() {
             <p className="text-sm text-muted-foreground">Please try again in a moment.</p>
           </div>
         ) : filtered.length > 0 ? (
-          <>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-
-            {/* Show More Button */}
-            {hasNextPage && (
-              <div className="flex justify-center mt-8">
-                <Button
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  variant="outline"
-                  size="lg"
-                  className="min-w-[200px]"
-                >
-                  {isFetchingNextPage ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading more...
-                    </>
-                  ) : (
-                    'Show More Events'
-                  )}
-                </Button>
-              </div>
-            )}
-          </>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Search className="h-10 w-10 text-muted-foreground/40 mb-4" aria-hidden="true" />
