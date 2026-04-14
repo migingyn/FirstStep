@@ -97,13 +97,26 @@ export default function EventDetail() {
   const isNotGoing = status === 'not-going'
   const isSaved = savedEvents.includes(ev.id)
   const days = daysUntil(ev.date)
-  const externalRsvpUrl = ev.externalRsvpUrl ?? 'https://forms.gle/example-rsvp-form'
+  const externalRsvpUrl = ev.rsvpData?.rsvpUrl || ev.externalRsvpUrl || 'https://forms.gle/example-rsvp-form'
 
   async function handleGoing() {
     try {
+      if (ev.rsvpData?.rsvpType === 'no_registration_required') {
+        // No registration needed, just mark as going
+        await setRsvpStatus(ev.id, 'going')
+        toast.success("You're going! No registration required.")
+        return
+      }
+
+      // For events that need registration, open the RSVP URL
       await setRsvpStatus(ev.id, 'pending')
-      window.open(externalRsvpUrl, '_blank', 'noopener,noreferrer')
-      toast.info('RSVP form opened in a new tab. Come back here and confirm once you submitted it.')
+
+      if (externalRsvpUrl && externalRsvpUrl !== 'https://forms.gle/example-rsvp-form') {
+        window.open(externalRsvpUrl, '_blank', 'noopener,noreferrer')
+        toast.info('RSVP form opened in a new tab. Come back here and confirm once you submitted it.')
+      } else {
+        toast.info('Marked as interested. Check the event details for RSVP information.')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to update your RSVP right now.')
     }
@@ -267,6 +280,31 @@ export default function EventDetail() {
           <h2 className="text-lg font-semibold text-foreground mb-3">About this event</h2>
           <p className="text-muted-foreground leading-relaxed">{ev.description}</p>
         </div>
+
+        {ev.rsvpData && (
+          <div className="mb-8 rounded-2xl bg-card border border-border/60 p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-3">RSVP Information</h2>
+            <div className="space-y-2 text-sm">
+              {ev.rsvpData.cost && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">Cost:</span>
+                  <span className="text-muted-foreground">{ev.rsvpData.cost}</span>
+                </div>
+              )}
+              {ev.rsvpData.rsvpType === 'no_registration_required' && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">Registration:</span>
+                  <span className="text-green-600">No registration required</span>
+                </div>
+              )}
+              {ev.rsvpData.notes && (
+                <div className="mt-3 p-3 rounded-lg bg-muted/50">
+                  <p className="text-muted-foreground">{ev.rsvpData.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {isPending && (
           <div className="rounded-2xl bg-accent/20 border border-accent/30 p-5 mb-6">

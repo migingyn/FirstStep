@@ -44,12 +44,31 @@ export function mapEventRecord(record: EventRecord): Event {
   }
 }
 
-export async function getEvents(): Promise<Event[]> {
-  const { data, error } = await supabase
+export async function getEvents(limit?: number, offset?: number): Promise<Event[]> {
+  let query = supabase
     .from('events')
-    .select('*')
+    .select(`
+      *,
+      event_rsvp_data (
+        rsvp_url,
+        rsvp_type,
+        cost,
+        notes,
+        source_url
+      )
+    `, { count: 'exact' })
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
+
+  if (limit) {
+    query = query.limit(limit)
+  }
+
+  if (offset) {
+    query = query.range(offset, offset + (limit || 50) - 1)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.warn('Falling back to bundled mock events because Supabase events could not be loaded.', error)
@@ -61,7 +80,20 @@ export async function getEvents(): Promise<Event[]> {
     return mockEvents
   }
 
-  return data.map(mapEventRecord)
+  return data.map(record => {
+    const event = mapEventRecord(record)
+    if (record.event_rsvp_data && record.event_rsvp_data.length > 0) {
+      const rsvp = record.event_rsvp_data[0]
+      event.rsvpData = {
+        rsvpUrl: rsvp.rsvp_url,
+        rsvpType: rsvp.rsvp_type,
+        cost: rsvp.cost,
+        notes: rsvp.notes,
+        sourceUrl: rsvp.source_url,
+      }
+    }
+    return event
+  })
 }
 
 export async function getEventById(eventId: string): Promise<Event | null> {

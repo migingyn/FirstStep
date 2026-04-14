@@ -14,6 +14,13 @@ export interface Event {
   organizer: string
   whyRecommended?: string
   externalRsvpUrl?: string | null
+  rsvpData?: {
+    rsvpUrl: string | null
+    rsvpType: 'no_registration_required' | 'external_registration' | 'calendar_rsvp'
+    cost: string | null
+    notes: string | null
+    sourceUrl: string | null
+  }
 }
 
 export const categories = [

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, Users, Bookmark } from 'lucide-react'
+import { Calendar, MapPin, Users, Bookmark, ExternalLink, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfidenceTag } from '@/components/ConfidenceTag'
 import { useProgress } from '@/contexts/ProgressContext'
@@ -35,6 +35,78 @@ export function EventCard({ event }: EventCardProps) {
   function handleViewMap(e: React.MouseEvent) {
     e.stopPropagation()
     navigate(`/map?event=${event.id}`)
+  }
+
+  function handleRSVP(e: React.MouseEvent) {
+    e.stopPropagation()
+
+    if (!event.rsvpData) {
+      toast.info('RSVP information not available for this event')
+      return
+    }
+
+    const { rsvpUrl, rsvpType, notes } = event.rsvpData
+
+    switch (rsvpType) {
+      case 'no_registration_required':
+        toast.success('No registration required! Just show up at the event.')
+        break
+      case 'external_registration':
+        if (rsvpUrl) {
+          window.open(rsvpUrl, '_blank', 'noopener,noreferrer')
+          toast.success('Opened registration page in new tab')
+        } else {
+          toast.info('Registration link not available')
+        }
+        break
+      case 'calendar_rsvp':
+        if (rsvpUrl) {
+          window.open(rsvpUrl, '_blank', 'noopener,noreferrer')
+          toast.success('Opened event page for RSVP')
+        } else {
+          toast.info('Event page not available')
+        }
+        break
+    }
+
+    if (notes) {
+      setTimeout(() => {
+        toast.info(notes, { duration: 5000 })
+      }, 1000)
+    }
+  }
+
+  function getRSVPButtonText() {
+    if (!event.rsvpData) return null
+
+    const { rsvpType, cost } = event.rsvpData
+
+    switch (rsvpType) {
+      case 'no_registration_required':
+        return 'No RSVP Needed'
+      case 'external_registration':
+        return cost?.toLowerCase().includes('free') ? 'Free RSVP' : 'RSVP'
+      case 'calendar_rsvp':
+        return 'RSVP on Calendar'
+      default:
+        return 'RSVP'
+    }
+  }
+
+  function getRSVPButtonIcon() {
+    if (!event.rsvpData) return null
+
+    const { rsvpType } = event.rsvpData
+
+    switch (rsvpType) {
+      case 'no_registration_required':
+        return <CheckCircle className="h-3.5 w-3.5" />
+      case 'external_registration':
+      case 'calendar_rsvp':
+        return <ExternalLink className="h-3.5 w-3.5" />
+      default:
+        return <ExternalLink className="h-3.5 w-3.5" />
+    }
   }
 
   return (
@@ -112,11 +184,21 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         )}
 
-        <div className="pt-1">
+        <div className="flex items-center justify-between gap-3 pt-1">
+          {getRSVPButtonText() && (
+            <button
+              type="button"
+              onClick={handleRSVP}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              {getRSVPButtonIcon()}
+              {getRSVPButtonText()}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleViewMap}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80 ml-auto"
           >
             <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
             View on map

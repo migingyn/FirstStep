@@ -81,6 +81,7 @@ export default function Onboarding() {
 
   async function persistProfile(completedOnboarding: boolean) {
     if (!user) {
+      toast.error('You need to be signed in to complete onboarding.')
       return
     }
 
@@ -97,7 +98,9 @@ export default function Onboarding() {
       await refreshProfile()
       navigate('/dashboard')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to save onboarding right now.')
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unable to save onboarding right now.'
+      toast.error(errorMessage)
     } finally {
       setIsSaving(false)
     }

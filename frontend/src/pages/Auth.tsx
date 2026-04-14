@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   clearPendingAuthFlow,
   getAuthRedirectUrl,
-  getPendingAuthFlow,
   setPendingAuthFlow,
 } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'

@@ -1,10 +1,27 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { getEventById, getEvents } from '@/lib/events'
+import type { Event } from '@/data/mockData'
 
 export function useEventsQuery() {
-  return useQuery({
+  return useQuery<Event[]>({
     queryKey: ['events'],
-    queryFn: getEvents,
+    queryFn: () => getEvents(),
+  })
+}
+
+export function usePaginatedEvents(pageSize: number = 12) {
+  return useInfiniteQuery<Event[]>({
+    queryKey: ['events', 'paginated', pageSize],
+    queryFn: ({ pageParam = 0 }) => getEvents(pageSize, pageParam as number),
+    getNextPageParam: (lastPage, allPages) => {
+      // If the last page has fewer items than pageSize, we've reached the end
+      if (lastPage.length < pageSize) {
+        return undefined
+      }
+      // Otherwise, return the offset for the next page
+      return allPages.length * pageSize
+    },
+    initialPageParam: 0,
   })
 }
 
