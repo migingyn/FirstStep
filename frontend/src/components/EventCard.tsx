@@ -32,6 +32,11 @@ export function EventCard({ event }: EventCardProps) {
     }
   }
 
+  function handleViewMap(e: React.MouseEvent) {
+    e.stopPropagation()
+    navigate(`/map?event=${event.id}`)
+  }
+
   return (
     <article
       role="button"
@@ -106,6 +111,17 @@ export function EventCard({ event }: EventCardProps) {
             ))}
           </div>
         )}
+
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={handleViewMap}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+            View on map
+          </button>
+        </div>
       </div>
     </article>
   )

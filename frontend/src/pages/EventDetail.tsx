@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Calendar,
@@ -11,6 +11,7 @@ import {
   Bookmark,
   CalendarPlus,
   ExternalLink,
+  Map,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/Navbar'
@@ -18,7 +19,9 @@ import { ConfidenceTag } from '@/components/ConfidenceTag'
 import { Button } from '@/components/ui/button'
 import { useProgress } from '@/contexts/ProgressContext'
 import { useEventQuery } from '@/hooks/useEvents'
+import { useResolvedEventLocation } from '@/hooks/useResolvedEventLocations'
 import { generateICS, getGoogleCalendarUrl } from '@/lib/calendar-export'
+import { getResolvedBuildingText, getWhereToGoCopy } from '@/lib/locationResolver'
 import { cn } from '@/lib/utils'
 
 function daysUntil(dateStr: string): number {
@@ -41,9 +44,11 @@ function formatDate(dateStr: string): string {
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { data: event, isLoading, isError } = useEventQuery(id)
   const { getRsvpStatus, setRsvpStatus, savedEvents, toggleSave } = useProgress()
   const [confirming, setConfirming] = useState(false)
+  const { location: resolvedLocation } = useResolvedEventLocation(event)
 
   if (isLoading) {
     return (
@@ -153,6 +158,11 @@ export default function EventDetail() {
   }
 
   const attendeeCount = ev.rsvpCount + (isGoing || isPending ? 1 : 0)
+  const whereToGo = resolvedLocation ? getWhereToGoCopy(resolvedLocation) : null
+
+  function handleViewOnMap() {
+    navigate(`/map?event=${ev.id}`)
+  }
 
   return (
     <>
@@ -209,13 +219,49 @@ export default function EventDetail() {
           </div>
           <div className="flex items-center gap-3">
             <MapPin className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <span className="text-foreground">{ev.location}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-foreground">{ev.location}</span>
+              <button
+                type="button"
+                onClick={handleViewOnMap}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              >
+                <Map className="h-3.5 w-3.5" aria-hidden="true" />
+                View on Map
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Users className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span className="text-foreground">{attendeeCount} people going</span>
           </div>
         </div>
+
+        {resolvedLocation && whereToGo ? (
+          <div className="mb-8 rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Where to go</p>
+            <h2 className="mt-2 text-lg font-semibold text-foreground">{whereToGo.title}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{whereToGo.body}</p>
+            <div className="mt-3 rounded-xl bg-secondary/70 p-3">
+              <p className="text-sm font-medium text-foreground">
+                {getResolvedBuildingText(resolvedLocation)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {resolvedLocation.helperText ?? 'Use the map to line up the destination before you head over.'}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-1">
+                {resolvedLocation.source}
+              </span>
+              <span>{Math.round(resolvedLocation.confidence * 100)}% confidence</span>
+            </div>
+            <Button onClick={handleViewOnMap} variant="outline" className="mt-4 rounded-xl">
+              <Map className="mr-2 h-4 w-4" aria-hidden="true" />
+              View on Map
+            </Button>
+          </div>
+        ) : null}
 
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-foreground mb-3">About this event</h2>

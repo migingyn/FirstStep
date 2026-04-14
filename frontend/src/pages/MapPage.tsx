@@ -1,30 +1,25 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { MapPin, Search, ChevronRight, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ChevronRight, MapPin, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { UCSDCampusMap } from '@/components/map/UCSDCampusMap'
 import { Navbar } from '@/components/Navbar'
 import { Input } from '@/components/ui/input'
+import { useResolvedEventLocations } from '@/hooks/useResolvedEventLocations'
 import { useProgress } from '@/contexts/ProgressContext'
 import { useEventsQuery } from '@/hooks/useEvents'
+import type { ArcGISMapRuntime } from '@/lib/arcgis'
+import { getResolvedBuildingText } from '@/lib/locationResolver'
 import { cn } from '@/lib/utils'
-
-const locationData = [
-  { name: 'Price Center East Ballroom', x: 42, y: 38 },
-  { name: 'Career Services Center, Room 210', x: 35, y: 52 },
-  { name: 'Scripps Pier Lawn', x: 78, y: 72 },
-  { name: 'Student Center, Gaming Lounge', x: 45, y: 42 },
-  { name: 'CSE Building, Room 1202', x: 55, y: 30 },
-  { name: 'Library Walk', x: 48, y: 45 },
-  { name: 'Sixth College Living Room', x: 62, y: 25 },
-  { name: 'The Basement (Entrepreneurship Center)', x: 40, y: 55 },
-]
 
 export default function MapPage() {
   const { markMapVisited } = useProgress()
-  const { data: events = [] } = useEventsQuery()
-  const [activeLocation, setActiveLocation] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const { data: events = [], isLoading, isError } = useEventsQuery()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [panelOpen, setPanelOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '')
+  const [runtime, setRuntime] = useState<ArcGISMapRuntime | null>(null)
+  const selectedEventId = searchParams.get('event')
 
   useEffect(() => {
     void markMapVisited().catch((error) => {
@@ -32,211 +27,229 @@ export default function MapPage() {
     })
   }, [markMapVisited])
 
-  const filteredLocations = locationData.filter((loc) => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
-    if (loc.name.toLowerCase().includes(q)) return true
-    return events.some((event) => {
-      if (event.location !== loc.name) {
-        return false
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '')
+  }, [searchParams])
+
+  const { resolvedById } = useResolvedEventLocations(events, { mapRuntime: runtime })
+
+  const filteredEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    return events.filter((event) => {
+      if (!query) {
+        return true
       }
 
-      return (
-        event.title.toLowerCase().includes(q) ||
-        event.category.toLowerCase().includes(q) ||
-        event.organizer.toLowerCase().includes(q)
-      )
+      const resolved = resolvedById[event.id]
+      return [
+        event.title,
+        event.location,
+        event.organizer,
+        resolved?.displayName,
+        resolved?.buildingName,
+        resolved?.helperText,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
     })
-  })
+  }, [events, resolvedById, searchQuery])
+
+  const selectedEvent =
+    events.find((event) => event.id === selectedEventId) ??
+    filteredEvents[0] ??
+    null
+
+  const selectedLocation = selectedEvent ? resolvedById[selectedEvent.id] ?? null : null
+
+  function updateSearchParams(nextEventId: string | null, nextQuery = searchQuery) {
+    const next = new URLSearchParams(searchParams)
+
+    if (nextEventId) {
+      next.set('event', nextEventId)
+    } else {
+      next.delete('event')
+    }
+
+    if (nextQuery.trim()) {
+      next.set('q', nextQuery.trim())
+    } else {
+      next.delete('q')
+    }
+
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <>
       <Navbar />
       <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
-
-        {/* Left Panel */}
         {panelOpen && (
-          <div className="w-80 lg:w-96 shrink-0 border-r border-border/50 bg-card flex flex-col overflow-hidden">
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
+          <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-border/50 bg-card lg:w-[26rem]">
+            <div className="flex items-center justify-between border-b border-border/50 px-4 py-4">
               <div>
                 <h2 className="font-semibold text-foreground">Campus Map</h2>
-                <p className="text-xs text-muted-foreground">{locationData.length} locations</p>
+                <p className="text-xs text-muted-foreground">
+                  {filteredEvents.length} event{filteredEvents.length === 1 ? '' : 's'} with map context
+                </p>
               </div>
               <button
                 onClick={() => setPanelOpen(false)}
-                className="md:hidden flex h-7 w-7 items-center justify-center rounded-lg hover:bg-secondary transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-secondary md:hidden"
                 aria-label="Close panel"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Search */}
-            <div className="relative px-4 py-3 border-b border-border/50">
-              <Search
-                className="absolute left-7 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                type="search"
-                placeholder="Search locations..."
-                className="pl-9 h-9 text-sm rounded-xl"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="border-b border-border/50 px-4 py-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input
+                  type="search"
+                  placeholder="Search by event, organizer, or building..."
+                  className="h-10 rounded-xl pl-10"
+                  value={searchQuery}
+                  onChange={(event) => {
+                    const nextQuery = event.target.value
+                    setSearchQuery(nextQuery)
+                    updateSearchParams(selectedEventId, nextQuery)
+                  }}
+                />
+              </div>
+              {import.meta.env.DEV && runtime?.layerSummaries.length ? (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  ArcGIS layers: {runtime.layerSummaries.map((layer) => layer.title).join(', ')}
+                </p>
+              ) : null}
             </div>
 
-            {/* Location list */}
             <div className="flex-1 overflow-y-auto">
-              {filteredLocations.map((loc) => {
-                const isActive = activeLocation === loc.name
-                const locationEvents = events.filter((event) => event.location === loc.name)
+              {isLoading ? (
+                <div className="px-4 py-8 text-sm text-muted-foreground">Loading event locations...</div>
+              ) : isError ? (
+                <div className="px-4 py-8 text-sm text-destructive">
+                  We couldn&apos;t load event locations right now.
+                </div>
+              ) : filteredEvents.length === 0 ? (
+                <div className="px-4 py-8 text-sm text-muted-foreground">
+                  No events matched that search yet.
+                </div>
+              ) : (
+                filteredEvents.map((event) => {
+                  const resolved = resolvedById[event.id]
+                  const isActive = selectedEvent?.id === event.id
 
-                return (
-                  <div key={loc.name}>
+                  return (
                     <button
-                      onClick={() => setActiveLocation(isActive ? null : loc.name)}
+                      key={event.id}
+                      onClick={() => updateSearchParams(event.id)}
                       className={cn(
-                        'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors border-b border-border/30',
-                        'hover:bg-secondary/50',
-                        isActive && 'bg-primary/5 border-l-2 border-l-primary',
+                        'w-full border-b border-border/40 px-4 py-4 text-left transition-colors hover:bg-secondary/40',
+                        isActive && 'bg-primary/5',
                       )}
-                      aria-expanded={isActive}
                     >
-                      <div
-                        className={cn(
-                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                          isActive ? 'bg-primary text-primary-foreground' : 'bg-secondary text-primary',
+                        )}>
+                          <MapPin className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground">{event.title}</p>
+                            <ChevronRight
+                              className={cn(
+                                'mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                                isActive && 'rotate-90',
+                              )}
+                              aria-hidden="true"
+                            />
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{event.organizer}</p>
+                          <p className="mt-2 text-xs text-foreground">
+                            {resolved ? getResolvedBuildingText(resolved) : event.location}
+                          </p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {resolved?.helperText ?? 'Matching campus location...'}
+                          </p>
+                          <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="rounded-full bg-secondary px-2 py-0.5">
+                              {resolved?.source ?? 'resolving'}
+                            </span>
+                            {resolved ? (
+                              <span>{Math.round(resolved.confidence * 100)}% confidence</span>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{loc.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {locationEvents.length} event{locationEvents.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <ChevronRight
-                        className={cn(
-                          'h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0',
-                          isActive && 'rotate-90',
-                        )}
-                        aria-hidden="true"
-                      />
                     </button>
-
-                    {/* Expanded events */}
-                    {isActive && (
-                      <div className="bg-secondary/30 px-4 py-2 border-b border-border/30">
-                        {locationEvents.map((event) =>
-                          event ? (
-                            <Link
-                              key={event.id}
-                              to={`/events/${event.id}`}
-                              className="flex items-start gap-2 py-2 hover:text-primary transition-colors group"
-                            >
-                              <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                              <div>
-                                <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                                  {event.title}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">{event.time} · {event.date}</p>
-                              </div>
-                            </Link>
-                          ) : null,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
-          </div>
+          </aside>
         )}
 
-        {/* Map Area */}
-        <div className="flex-1 relative overflow-hidden bg-warm-white">
-          {/* Grid pattern */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: 'radial-gradient(circle, hsl(204 100% 32% / 0.04) 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-
-          {/* Toggle panel button */}
+        <div className="relative flex-1 overflow-hidden bg-warm-white p-4">
           {!panelOpen && (
             <button
               onClick={() => setPanelOpen(true)}
-              className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-card hover:shadow-card-hover transition-shadow"
+              className="absolute left-8 top-8 z-20 inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-sm font-medium shadow-card"
             >
               <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
-              Locations
+              Open list
             </button>
           )}
 
-          {/* UCSD Campus label */}
-          <div className="absolute top-4 right-4 z-10">
-            <span className="text-xs font-medium text-muted-foreground bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border/50">
-              UCSD Campus
-            </span>
+          <div className="absolute right-8 top-8 z-20 rounded-full border border-border/60 bg-card/85 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+            UCSD ArcGIS campus map
           </div>
 
-          {/* Decorative campus buildings */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute rounded-xl bg-primary/5 border border-primary/10" style={{ left: '25%', top: '20%', width: '18%', height: '12%' }} />
-            <div className="absolute rounded-xl bg-secondary border border-border/50" style={{ left: '50%', top: '35%', width: '22%', height: '15%' }} />
-            <div className="absolute rounded-xl bg-primary/5 border border-primary/10" style={{ left: '60%', top: '55%', width: '16%', height: '10%' }} />
-            <div className="absolute rounded-xl bg-secondary border border-border/50" style={{ left: '30%', top: '65%', width: '20%', height: '8%' }} />
-          </div>
+          <UCSDCampusMap
+            className="h-full"
+            selectedLocation={selectedLocation}
+            onRuntimeReady={setRuntime}
+          />
 
-          {/* Location pins */}
-          {locationData.map((loc) => {
-            const isActive = activeLocation === loc.name
-            return (
-              <button
-                key={loc.name}
-                onClick={() => setActiveLocation(isActive ? null : loc.name)}
-                style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 group z-20"
-                aria-label={loc.name}
-              >
-                <div
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm shadow-md transition-all duration-200',
-                    isActive
-                      ? 'bg-primary text-primary-foreground scale-125 shadow-elevated'
-                      : 'bg-card border-2 border-primary text-primary hover:scale-110 hover:shadow-card-hover',
-                  )}
-                >
-                  {events.filter((event) => event.location === loc.name).length}
+          {selectedEvent && selectedLocation ? (
+            <div className="pointer-events-none absolute bottom-8 left-8 right-8 z-20 md:right-auto md:max-w-sm">
+              <div className="pointer-events-auto rounded-2xl border border-border/60 bg-card/95 p-4 shadow-elevated backdrop-blur-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">Where to go</p>
+                <h3 className="mt-1 text-lg font-semibold text-foreground">{selectedEvent.title}</h3>
+                <p className="mt-2 text-sm text-foreground">
+                  {selectedLocation.confidence >= 0.75
+                    ? `This event is at ${getResolvedBuildingText(selectedLocation)}.`
+                    : 'We matched this event location approximately.'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedLocation.helperText ??
+                    'Use the highlighted marker to orient yourself before heading across campus.'}
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-secondary px-2 py-1">
+                    {selectedLocation.source}
+                  </span>
+                  <span>{Math.round(selectedLocation.confidence * 100)}% confidence</span>
                 </div>
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 pointer-events-none">
-                  <div className="whitespace-nowrap bg-foreground text-background text-xs px-2.5 py-1.5 rounded-lg shadow-elevated max-w-[180px] text-center leading-tight">
-                    {loc.name}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-
-          {/* Center prompt */}
-          {!activeLocation && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center text-muted-foreground">
-                <MapPin className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" aria-hidden="true" />
-                <p className="text-sm font-medium">Click a pin or location to see events</p>
+                <ButtonRow eventId={selectedEvent.id} />
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </>
+  )
+}
+
+function ButtonRow({ eventId }: { eventId: string }) {
+  return (
+    <div className="mt-4 flex items-center justify-between">
+      <Link to={`/events/${eventId}`} className="text-sm font-medium text-primary hover:underline">
+        Back to event details
+      </Link>
+      <span className="text-xs text-muted-foreground">One destination highlighted at a time</span>
+    </div>
   )
 }
