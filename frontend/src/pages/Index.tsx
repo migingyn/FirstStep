@@ -1,10 +1,28 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles, Zap, Users, ChevronDown, Menu, X, Check } from 'lucide-react'
+import {
+  Sparkles,
+  Zap,
+  Users,
+  ChevronDown,
+  Menu,
+  X,
+  Check,
+  ArrowRight,
+  CalendarDays,
+  Bookmark,
+  MapPinned,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ContactDialog } from '@/components/ContactDialog'
 import { PrivacyDialog } from '@/components/PrivacyDialog'
 import { cn } from '@/lib/utils'
+
+const heroPreviewTabs = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'events', label: 'Events' },
+  { id: 'map', label: 'Map' },
+] as const
 
 // ─── Scroll animation hook ────────────────────────────────────────────────────
 function useScrollAnimation() {
@@ -21,46 +39,257 @@ function useScrollAnimation() {
   return { ref, isVisible }
 }
 
-// ─── Phone Mockup ─────────────────────────────────────────────────────────────
-function PhoneMockup() {
+// ─── Hero Preview ─────────────────────────────────────────────────────────────
+function HeroPreview() {
+  const [activeTab, setActiveTab] = useState<(typeof heroPreviewTabs)[number]['id']>('dashboard')
+
+  useEffect(() => {
+    const cycle = window.setInterval(() => {
+      setActiveTab((current) => {
+        const currentIndex = heroPreviewTabs.findIndex((tab) => tab.id === current)
+        return heroPreviewTabs[(currentIndex + 1) % heroPreviewTabs.length].id
+      })
+    }, 3500)
+
+    return () => window.clearInterval(cycle)
+  }, [])
+
+  const dashboardTasks = [
+    {
+      title: 'Attend Your First Event',
+      meta: '1 step away from completing your welcome path',
+      status: 'Recommended',
+      icon: CalendarDays,
+      tone: 'text-primary bg-primary/10',
+    },
+    {
+      title: 'Save 3 Events You Like',
+      meta: '2/3 saved so far',
+      status: 'In Progress',
+      icon: Bookmark,
+      tone: 'text-confidence-green bg-confidence-green/10',
+    },
+    {
+      title: 'Explore the Campus Map',
+      meta: 'Find events close to class',
+      status: 'New',
+      icon: MapPinned,
+      tone: 'text-coral bg-coral/15',
+    },
+  ]
+
+  const eventCards = [
+    {
+      title: 'Transfer Welcome Mixer',
+      time: 'Apr 15 · 5:00 PM',
+      note: 'Good First Event',
+    },
+    {
+      title: 'Resume Lab',
+      time: 'Apr 16 · 3:00 PM',
+      note: 'Small Group',
+    },
+    {
+      title: 'Salsa Social Night',
+      time: 'Apr 17 · 7:30 PM',
+      note: 'Come Solo Friendly',
+    },
+  ]
+
   return (
-    <div className="relative flex items-center justify-center py-8">
-      <div className="absolute top-0 left-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
-      <div className="absolute bottom-0 right-0 h-32 w-32 rounded-full bg-coral/15 blur-2xl" />
-      <div className="relative border-4 border-foreground/10 rounded-3xl bg-card shadow-elevated p-3 w-52">
-        <div className="flex justify-between items-center px-2 mb-2">
-          <span className="text-[10px] text-muted-foreground">9:41</span>
-          <span className="text-[10px] text-muted-foreground font-bold text-primary">FirstStep</span>
-          <span className="text-[10px] text-muted-foreground">●●●</span>
-        </div>
-        <div className="flex gap-1 mb-3 overflow-hidden">
-          {['Social', 'Career', 'Arts'].map((cat, i) => (
-            <span
-              key={cat}
-              className={cn(
-                'text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0',
-                i === 0
-                  ? 'bg-foreground text-background'
-                  : 'bg-secondary text-muted-foreground border border-border/60',
-              )}
-            >
-              {cat}
-            </span>
-          ))}
-        </div>
-        {[
-          { title: 'Transfer Welcome Mixer', tag: 'Good First Event', tagColor: 'text-confidence-green', date: 'Apr 15 · 5:00 PM' },
-          { title: 'Resume Workshop', tag: 'Small Group', tagColor: 'text-primary', date: 'Apr 16 · 3:00 PM' },
-        ].map((item) => (
-          <div key={item.title} className="border border-border/50 rounded-xl p-2 mb-2 bg-background">
-            <div className="h-[2px] w-full rounded-full bg-gradient-to-r from-primary to-primary/60 mb-1.5" />
-            <p className="text-[10px] font-medium leading-tight mb-1">{item.title}</p>
-            <p className="text-[9px] text-muted-foreground mb-1">{item.date}</p>
-            <span className={cn('text-[8px] font-medium border rounded-full px-1.5 py-0.5', item.tagColor, 'border-current/30 bg-current/5')}>
-              {item.tag}
-            </span>
+    <div className="relative mx-auto flex w-full max-w-[42rem] items-center justify-center py-6 md:py-8">
+      <div className="absolute -left-4 top-4 h-52 w-52 rounded-full bg-primary/15 blur-3xl" />
+      <div className="absolute -bottom-2 right-0 h-40 w-40 rounded-full bg-coral/20 blur-3xl" />
+      <div className="relative w-full overflow-hidden rounded-[2rem] border border-foreground/10 bg-card/95 p-3 shadow-elevated backdrop-blur-sm md:p-4">
+        <div className="rounded-[1.6rem] border border-border/70 bg-background">
+          <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">FirstStep</p>
+              <p className="text-xs text-muted-foreground">Preview of your first week at UCSD</p>
+            </div>
+            <div className="hidden items-center gap-2 md:flex">
+              {heroPreviewTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === tab.id
+                      ? 'bg-foreground text-background'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
+
+          <div className="p-4 md:p-5">
+            <div className="mb-4 flex flex-wrap gap-2 md:hidden">
+              {heroPreviewTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === tab.id
+                      ? 'bg-foreground text-background'
+                      : 'bg-secondary text-muted-foreground',
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-teal-light p-3">
+                <p className="text-xs text-muted-foreground">Recommended</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">12</p>
+              </div>
+              <div className="rounded-2xl bg-secondary p-3">
+                <p className="text-xs text-muted-foreground">Saved Events</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">3</p>
+              </div>
+              <div className="rounded-2xl bg-secondary p-3">
+                <p className="text-xs text-muted-foreground">Confidence Match</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">92%</p>
+              </div>
+            </div>
+
+            <div className="min-h-[21rem] transition-all duration-300">
+              {activeTab === 'dashboard' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-semibold text-foreground">Start Here This Week</p>
+                      <p className="text-sm text-muted-foreground">
+                        A more realistic view of the guided dashboard students actually use.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                      1/3 complete
+                    </span>
+                  </div>
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div className="h-full w-1/3 rounded-full bg-primary transition-all duration-500" />
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {dashboardTasks.map((task) => (
+                      <div key={task.title} className="rounded-2xl border border-border/70 bg-card p-4 shadow-card">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', task.tone)}>
+                            <task.icon className="h-5 w-5" aria-hidden="true" />
+                          </div>
+                          <span className="rounded-full border border-border/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                            {task.status}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">{task.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{task.meta}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'events' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-semibold text-foreground">Recommended For You</p>
+                      <p className="text-sm text-muted-foreground">
+                        Event cards reflect the same confidence-tagged browsing experience as the app.
+                      </p>
+                    </div>
+                    <span className="hidden items-center gap-1 text-sm font-medium text-primary md:inline-flex">
+                      See all <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {eventCards.map((event) => (
+                      <div key={event.title} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card">
+                        <div className="h-24 bg-gradient-to-r from-primary/85 via-primary to-confidence-blue/70" />
+                        <div className="space-y-2 p-4">
+                          <span className="inline-flex rounded-full bg-confidence-green/10 px-2.5 py-1 text-[11px] font-semibold text-confidence-green">
+                            {event.note}
+                          </span>
+                          <p className="text-sm font-semibold text-foreground">{event.title}</p>
+                          <p className="text-xs text-muted-foreground">{event.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'map' && (
+                <div className="animate-fade-in">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-semibold text-foreground">Campus Map</p>
+                      <p className="text-sm text-muted-foreground">
+                        Students can explore nearby events before heading across campus.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-coral/15 px-3 py-1 text-xs font-semibold text-foreground">
+                      Live hotspots
+                    </span>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[1.5fr_0.9fr]">
+                    <div className="relative min-h-[16rem] overflow-hidden rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top,_rgba(10,103,163,0.10),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.95),_rgba(240,247,251,0.95))] p-5">
+                      <div className="absolute inset-0 bg-[linear-gradient(rgba(10,103,163,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(10,103,163,0.08)_1px,transparent_1px)] bg-[size:38px_38px] opacity-40" />
+                      <div className="relative flex h-full items-center justify-center">
+                        <div className="grid w-full max-w-md grid-cols-3 gap-4">
+                          {[
+                            'Library Walk',
+                            'Price Center',
+                            'RIMAC',
+                            'Sun God Lawn',
+                            'Career Center',
+                            'Matthews Quad',
+                          ].map((label, index) => (
+                            <div
+                              key={label}
+                              className={cn(
+                                'rounded-2xl border px-3 py-4 text-center text-xs font-medium shadow-soft',
+                                index % 2 === 0
+                                  ? 'border-primary/20 bg-white text-foreground'
+                                  : 'border-coral/20 bg-coral/10 text-foreground',
+                              )}
+                            >
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        ['Career Fair', '8 min walk from Center Hall'],
+                        ['Board Game Social', 'Near Price Center East'],
+                        ['Transfer Meetup', 'Popular with solo attendees'],
+                      ].map(([title, meta]) => (
+                        <div key={title} className="rounded-2xl border border-border/70 bg-card p-4 shadow-card">
+                          <p className="text-sm font-semibold text-foreground">{title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{meta}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -299,9 +528,9 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* Right: Phone mockup */}
-              <div className="hidden md:flex justify-center">
-                <PhoneMockup />
+              {/* Right: Product preview */}
+              <div className="mt-2 md:mt-0">
+                <HeroPreview />
               </div>
             </div>
 
