@@ -2,6 +2,21 @@
 
 ## Supabase Setup
 
+## Backend env setup
+
+Copy `backend/.env.example` to `backend/.env` and fill in:
+
+```bash
+PROJECT_NAME="FirstStep API"
+API_PREFIX="/api"
+ALLOWED_ORIGINS="http://localhost:5173"
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SECRET_KEY=your-supabase-service-role-key
+BROWSER_USE_API_KEY=your-browser-use-api-key
+```
+
+Browser Use follows the current official docs and reads `BROWSER_USE_API_KEY`. Create that key at `https://cloud.browser-use.com/settings`.
+
 ### Required env vars
 
 Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
@@ -63,10 +78,26 @@ Google OAuth uses `signInWithOAuth` and sends users back through the existing `/
 ### Local development
 
 1. Run the SQL migrations in Supabase.
-2. Create `frontend/.env.local` from `frontend/.env.example`.
-3. Install frontend dependencies with `npm install` inside `frontend/` if needed.
-4. Start the frontend with `npm run dev` inside `frontend/`.
-5. Sign up with email/password or Google and complete onboarding.
+2. Create `backend/.env` from `backend/.env.example`.
+3. Create `frontend/.env.local` from `frontend/.env.example`.
+4. Install backend dependencies with `pip install -r backend/requirements.txt` if needed.
+5. Install frontend dependencies with `npm install` inside `frontend/` if needed.
+6. Start the backend from `backend/` with `uvicorn app.main:app --reload`.
+7. Start the frontend with `npm run dev` inside `frontend/`.
+8. Sign up with email/password or Google and complete onboarding.
+
+### Browser Use API
+
+Once `BROWSER_USE_API_KEY` is set, the backend exposes:
+
+```bash
+POST /api/browser-use/run
+Content-Type: application/json
+
+{
+  "task": "Go to example.com and tell me the page title"
+}
+```
 
 Build verification used during this implementation:
 

@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY")
     )
 
+    # Browser Use
+    BROWSER_USE_API_KEY: str | None = None
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value: list[str] | str) -> list[str]:
