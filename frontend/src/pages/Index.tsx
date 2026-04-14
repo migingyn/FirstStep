@@ -160,7 +160,7 @@ function HeroPreview() {
               </div>
             </div>
 
-            <div className="min-h-[21rem] transition-all duration-300">
+            <div className="min-h-[21rem] transition-all duration-300 lg:h-[21rem]">
               {activeTab === 'dashboard' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
@@ -230,7 +230,7 @@ function HeroPreview() {
               )}
 
               {activeTab === 'map' && (
-                <div className="animate-fade-in">
+                <div className="animate-fade-in lg:flex lg:h-full lg:flex-col">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <p className="text-lg font-semibold text-foreground">Campus Map</p>
@@ -243,11 +243,11 @@ function HeroPreview() {
                     </span>
                   </div>
 
-                  <div className="grid gap-4 lg:grid-cols-[1.5fr_0.9fr]">
-                    <div className="relative min-h-[16rem] overflow-hidden rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top,_rgba(10,103,163,0.10),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.95),_rgba(240,247,251,0.95))] p-5">
+                  <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1.5fr_0.9fr]">
+                    <div className="relative min-h-[13rem] overflow-hidden rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top,_rgba(10,103,163,0.10),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.95),_rgba(240,247,251,0.95))] p-5 lg:min-h-0">
                       <div className="absolute inset-0 bg-[linear-gradient(rgba(10,103,163,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(10,103,163,0.08)_1px,transparent_1px)] bg-[size:38px_38px] opacity-40" />
                       <div className="relative flex h-full items-center justify-center">
-                        <div className="grid w-full max-w-md grid-cols-3 gap-4">
+                        <div className="grid w-full max-w-md grid-cols-3 gap-3">
                           {[
                             'Library Walk',
                             'Price Center',
@@ -259,7 +259,7 @@ function HeroPreview() {
                             <div
                               key={label}
                               className={cn(
-                                'rounded-2xl border px-3 py-4 text-center text-xs font-medium shadow-soft',
+                                'rounded-2xl border px-3 py-3 text-center text-xs font-medium shadow-soft',
                                 index % 2 === 0
                                   ? 'border-primary/20 bg-white text-foreground'
                                   : 'border-coral/20 bg-coral/10 text-foreground',
@@ -272,13 +272,13 @@ function HeroPreview() {
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 lg:space-y-2">
                       {[
                         ['Career Fair', '8 min walk from Center Hall'],
                         ['Board Game Social', 'Near Price Center East'],
                         ['Transfer Meetup', 'Popular with solo attendees'],
                       ].map(([title, meta]) => (
-                        <div key={title} className="rounded-2xl border border-border/70 bg-card p-4 shadow-card">
+                        <div key={title} className="rounded-2xl border border-border/70 bg-card p-3 shadow-card">
                           <p className="text-sm font-semibold text-foreground">{title}</p>
                           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{meta}</p>
                         </div>
