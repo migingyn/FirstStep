@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,17 +22,33 @@ export default function Auth() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, isLoading, profile } = useAuth()
+
+  useEffect(() => {
+    const requestedMode = searchParams.get('mode')
+    if (requestedMode === 'login' || requestedMode === 'signup') {
+      setMode(requestedMode)
+    }
+  }, [searchParams])
+
+  function updateMode(nextMode: 'login' | 'signup') {
+    setMode(nextMode)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('mode', nextMode)
+      return next
+    }, { replace: true })
+  }
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) {
       return
     }
 
-    const pendingFlow = getPendingAuthFlow()
     const from = (location.state as { from?: string } | null)?.from
 
-    if (pendingFlow === 'signup' || (pendingFlow === 'google' && !profile?.completed_onboarding)) {
+    if (!profile?.completed_onboarding) {
       clearPendingAuthFlow()
       navigate('/onboarding', { replace: true })
       return
@@ -145,7 +161,7 @@ export default function Auth() {
                 <button
                   key={viewMode}
                   type="button"
-                  onClick={() => setMode(viewMode)}
+                  onClick={() => updateMode(viewMode)}
                   className={cn(
                     'flex-1 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
                     mode === viewMode
@@ -287,13 +303,13 @@ export default function Auth() {
               Continue with Google
             </Button>
 
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                type="button"
-                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                className="text-primary font-medium hover:underline cursor-pointer"
-              >
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              type="button"
+              onClick={() => updateMode(mode === 'login' ? 'signup' : 'login')}
+              className="text-primary font-medium hover:underline cursor-pointer"
+            >
                 {mode === 'login' ? 'Sign up free' : 'Log in'}
               </button>
             </p>

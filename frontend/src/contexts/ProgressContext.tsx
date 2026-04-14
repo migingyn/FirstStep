@@ -63,7 +63,6 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function setRsvpStatus(eventId: string, status: RsvpStatus) {
-    const previousState = stateRef.current
     setState((current) => applyLocalRsvpTransition(current, eventId, status))
 
     if (!user?.id) {
@@ -72,11 +71,14 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await applyEventRsvpStatus(eventId, status)
-      await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
-      await syncFromSupabase(user.id)
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
+        await syncFromSupabase(user.id)
+      } catch (syncError) {
+        console.warn('RSVP persisted, but progress sync failed. Keeping local RSVP state.', syncError)
+      }
     } catch (error) {
-      setState(previousState)
-      throw error
+      console.warn('Unable to persist RSVP. Keeping local RSVP state for this session.', error)
     }
   }
 
@@ -96,11 +98,14 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await persistSavedEvent(user.id, eventId, shouldSave)
-      await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
-      await syncFromSupabase(user.id)
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['progress', user.id] })
+        await syncFromSupabase(user.id)
+      } catch (syncError) {
+        console.warn('Saved event persisted, but progress sync failed. Keeping local save state.', syncError)
+      }
     } catch (error) {
-      setState(previousState)
-      throw error
+      console.warn('Unable to persist saved event. Keeping local save state for this session.', error)
     }
   }
 

@@ -298,7 +298,7 @@ function HeroPreview() {
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={cn('px-4 py-20 md:py-28', className)}>
+    <section id={id} className={cn('scroll-mt-20 px-4 py-20 md:scroll-mt-24 md:py-28', className)}>
       <div className="container mx-auto max-w-6xl">{children}</div>
     </section>
   )
@@ -317,18 +317,36 @@ export default function Index() {
   // Active section tracking
   useEffect(() => {
     const ids = ['features', 'how-it-works', 'stories', 'membership']
-    const observers: IntersectionObserver[] = []
-    ids.forEach((id) => {
-      const el = document.getElementById(id)
-      if (!el) return
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry?.isIntersecting) setActiveSection(id) },
-        { threshold: 0.15 },
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach((o) => o.disconnect())
+    const updateActiveSection = () => {
+      const headerOffset = 96
+      let nextSection = ids[0]
+
+      ids.forEach((id) => {
+        const el = document.getElementById(id)
+        if (!el) return
+
+        const rect = el.getBoundingClientRect()
+        if (rect.top <= headerOffset && rect.bottom > headerOffset) {
+          nextSection = id
+        }
+      })
+
+      const firstSection = document.getElementById(ids[0])
+      if (firstSection && firstSection.getBoundingClientRect().top > headerOffset) {
+        nextSection = ids[0]
+      }
+
+      setActiveSection((current) => (current === nextSection ? current : nextSection))
+    }
+
+    updateActiveSection()
+    window.addEventListener('scroll', updateActiveSection, { passive: true })
+    window.addEventListener('resize', updateActiveSection)
+
+    return () => {
+      window.removeEventListener('scroll', updateActiveSection)
+      window.removeEventListener('resize', updateActiveSection)
+    }
   }, [])
 
   const navItems = [
@@ -337,6 +355,17 @@ export default function Index() {
     { label: 'Stories', href: '#stories' },
     { label: 'Membership', href: '#membership' },
   ]
+
+  function scrollToSection(sectionId: string) {
+    const target = document.getElementById(sectionId)
+    if (!target) {
+      return
+    }
+
+    setActiveSection(sectionId)
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.history.replaceState(null, '', `#${sectionId}`)
+  }
 
   const features = [
     {
@@ -444,6 +473,10 @@ export default function Index() {
                 <a
                   key={item.href}
                   href={item.href}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    scrollToSection(sectionId)
+                  }}
                   className={cn(
                     'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
                     activeSection === sectionId
@@ -460,10 +493,10 @@ export default function Index() {
           {/* Desktop right */}
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/auth">Log In</Link>
+              <Link to="/auth?mode=login">Log In</Link>
             </Button>
             <Button asChild variant="coral" size="sm" className="rounded-full">
-              <Link to="/auth">Get Started</Link>
+              <Link to="/auth?mode=signup">Get Started</Link>
             </Button>
           </div>
 
@@ -486,7 +519,11 @@ export default function Index() {
                 <a
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    setMobileMenuOpen(false)
+                    scrollToSection(item.href.replace('#', ''))
+                  }}
                   className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {item.label}
@@ -494,7 +531,7 @@ export default function Index() {
               ))}
             </nav>
             <Button asChild variant="coral" size="lg" className="rounded-full w-full">
-              <Link to="/auth">Get Started Free</Link>
+              <Link to="/auth?mode=signup">Get Started Free</Link>
             </Button>
           </div>
         )}

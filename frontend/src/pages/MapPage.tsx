@@ -1,37 +1,40 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronRight, MapPin, Search, X } from 'lucide-react'
-import { toast } from 'sonner'
 import { UCSDCampusMap } from '@/components/map/UCSDCampusMap'
 import { Navbar } from '@/components/Navbar'
 import { Input } from '@/components/ui/input'
 import { useResolvedEventLocations } from '@/hooks/useResolvedEventLocations'
 import { useProgress } from '@/contexts/ProgressContext'
 import { useEventsQuery } from '@/hooks/useEvents'
-import type { ArcGISMapRuntime } from '@/lib/arcgis'
 import { getResolvedBuildingText } from '@/lib/locationResolver'
 import { cn } from '@/lib/utils'
 
 export default function MapPage() {
-  const { markMapVisited } = useProgress()
+  const { mapVisited, markMapVisited } = useProgress()
   const { data: events = [], isLoading, isError } = useEventsQuery()
   const [searchParams, setSearchParams] = useSearchParams()
   const [panelOpen, setPanelOpen] = useState(true)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '')
-  const [runtime, setRuntime] = useState<ArcGISMapRuntime | null>(null)
+  const hasAttemptedMapProgressRef = useRef(false)
   const selectedEventId = searchParams.get('event')
 
   useEffect(() => {
+    if (mapVisited || hasAttemptedMapProgressRef.current) {
+      return
+    }
+
+    hasAttemptedMapProgressRef.current = true
     void markMapVisited().catch((error) => {
-      toast.error(error instanceof Error ? error.message : 'Unable to save map progress right now.')
+      console.warn('Unable to persist map progress.', error)
     })
-  }, [markMapVisited])
+  }, [mapVisited, markMapVisited])
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '')
   }, [searchParams])
 
-  const { resolvedById } = useResolvedEventLocations(events, { mapRuntime: runtime })
+  const { resolvedById } = useResolvedEventLocations(events)
 
   const filteredEvents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -117,11 +120,6 @@ export default function MapPage() {
                   }}
                 />
               </div>
-              {import.meta.env.DEV && runtime?.layerSummaries.length ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  ArcGIS layers: {runtime.layerSummaries.map((layer) => layer.title).join(', ')}
-                </p>
-              ) : null}
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -204,13 +202,12 @@ export default function MapPage() {
           )}
 
           <div className="absolute right-8 top-8 z-20 rounded-full border border-border/60 bg-card/85 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-            UCSD ArcGIS campus map
+            UCSD terrain map
           </div>
 
           <UCSDCampusMap
             className="h-full"
             selectedLocation={selectedLocation}
-            onRuntimeReady={setRuntime}
           />
 
           {selectedEvent && selectedLocation ? (

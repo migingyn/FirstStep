@@ -66,7 +66,7 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             {!isAuthenticated && (
               <Button asChild variant="coral" size="sm" className="hidden md:inline-flex rounded-full">
-                <Link to="/auth">Sign Up</Link>
+                <Link to="/auth?mode=signup">Sign Up</Link>
               </Button>
             )}
             <Link

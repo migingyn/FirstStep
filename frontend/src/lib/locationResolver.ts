@@ -1,6 +1,7 @@
 import {
   ARCGIS_WORLD_GEOCODER_URL,
   type ArcGISMapRuntime,
+  normalizeLocationText,
   scoreTextMatch,
   UCSD_CAMPUS_CENTER,
 } from '@/lib/arcgis'
@@ -37,13 +38,120 @@ export interface ResolveLocationOptions {
   mapRuntime?: ArcGISMapRuntime | null
 }
 
+const resolutionCache = new Map<string, Promise<ResolvedLocation>>()
+
 const LOCATION_ALIASES: LocationAlias[] = [
+  {
+    displayName: 'The Zone at Price Center',
+    buildingName: 'The Zone',
+    helperText: 'Inside Price Center, a student lounge and programming space near the central food court.',
+    coordinates: { latitude: 32.8795, longitude: -117.236 },
+    aliases: ['the zone', 'price center the zone', 'price center, the zone'],
+  },
+  {
+    displayName: 'Price Center Theater',
+    buildingName: 'Price Center Theater',
+    helperText: 'Inside Price Center near PC West and the main student activity spaces.',
+    coordinates: { latitude: 32.8792, longitude: -117.2363 },
+    aliases: ['price center theater', 'pc theater', 'price center west plaza', 'pc west plaza'],
+  },
+  {
+    displayName: 'Cross-Cultural Center, Comunidad Room',
+    buildingName: 'Cross-Cultural Center',
+    helperText: 'Inside Price Center near the community resource spaces and meeting rooms.',
+    coordinates: { latitude: 32.8793, longitude: -117.2362 },
+    aliases: ['cross-cultural center', 'comunidad room', 'price center, cross-cultural center', 'cross cultural center comunidad room'],
+  },
+  {
+    displayName: 'Women’s Resource Center',
+    buildingName: 'Women’s Resource Center',
+    helperText: 'A campus community and resource space near the Student Services area.',
+    coordinates: { latitude: 32.8786, longitude: -117.2355 },
+    aliases: ['women’s resource center', "women's resource center", 'womens resource center', 'wrc'],
+  },
+  {
+    displayName: 'RAZA Resource Center',
+    buildingName: 'RAZA Resource Center',
+    helperText: 'Located in Pepper Canyon Hall and close to the trolley-facing side of campus.',
+    coordinates: { latitude: 32.8778, longitude: -117.2292 },
+    aliases: ['raza resource center', 'rrc', 'pepper canyon hall room 264', 'pepper canyon hall, room 264'],
+  },
+  {
+    displayName: 'Geisel Library Seuss Room',
+    buildingName: 'Geisel Library',
+    helperText: 'Inside Geisel Library near the named reading and meeting spaces.',
+    coordinates: { latitude: 32.8812, longitude: -117.2375 },
+    aliases: ['seuss room', 'geisel library seuss room', 'geisel library, seuss room'],
+  },
+  {
+    displayName: 'Geisel Library Calm Cave',
+    buildingName: 'Geisel Library',
+    helperText: 'Inside Geisel Library in one of the quieter wellness-oriented rooms.',
+    coordinates: { latitude: 32.8811, longitude: -117.2377 },
+    aliases: ['calm-cave room', 'calm cave room', 'geisel library calm-cave room', 'geisel library, calm-cave room'],
+  },
+  {
+    displayName: 'Geisel Meeting Room',
+    buildingName: 'Geisel Library',
+    helperText: 'Inside Geisel Library in a reservable campus meeting space.',
+    coordinates: { latitude: 32.8811, longitude: -117.2376 },
+    aliases: ['geisel meeting room', 'geisel library geisel meeting room', 'geisel library, geisel meeting room'],
+  },
+  {
+    displayName: 'Kavli Auditorium, Tata Hall',
+    buildingName: 'Tata Hall',
+    helperText: 'Inside Tata Hall near the campus engineering and innovation buildings.',
+    coordinates: { latitude: 32.8819, longitude: -117.2332 },
+    aliases: ['kavli auditorium', 'tata hall', 'kavli auditorium tata hall', '3rd floor tata hall'],
+  },
+  {
+    displayName: 'Jacobs Hall, Qualcomm Conference Room',
+    buildingName: 'Jacobs Hall',
+    helperText: 'Inside Jacobs Hall in the engineering district east of Warren Mall.',
+    coordinates: { latitude: 32.8831, longitude: -117.2334 },
+    aliases: ['jacobs hall', 'qualcomm conference room', 'jacobs hall qualcomm conference room'],
+  },
+  {
+    displayName: 'Craft Center at Sixth College',
+    buildingName: 'Craft Center',
+    helperText: 'At Sixth College near Mosaic and the newer student commons spaces.',
+    coordinates: { latitude: 32.8819, longitude: -117.2425 },
+    aliases: ['craft center', 'mosaic second floor', 'craft center sixth college', 'sixth college mosaic second floor'],
+  },
+  {
+    displayName: 'Black Resource Center',
+    buildingName: 'Black Resource Center',
+    helperText: 'A student community and cultural resource space on central campus.',
+    coordinates: { latitude: 32.8788, longitude: -117.2357 },
+    aliases: ['black resource center', 'brc'],
+  },
+  {
+    displayName: 'Atkinson Hall',
+    buildingName: 'Atkinson Hall',
+    helperText: 'Home to Qualcomm Institute spaces near Warren Mall and the engineering side of campus.',
+    coordinates: { latitude: 32.8819, longitude: -117.2338 },
+    aliases: ['atkinson hall', 'aktinson hall', 'atkinson hall first floor', 'aktinson hall first floor', 'showcase qi'],
+  },
+  {
+    displayName: 'Student Health Services',
+    buildingName: 'Student Health Services',
+    helperText: 'The main student health clinic and wellness services location on campus.',
+    coordinates: { latitude: 32.8755, longitude: -117.2402 },
+    aliases: ['student health services', 'student health'],
+  },
+  {
+    displayName: 'ERC Green',
+    buildingName: 'ERC Green',
+    helperText: 'An open outdoor space in Eleanor Roosevelt College used for casual student events.',
+    coordinates: { latitude: 32.8859, longitude: -117.2429 },
+    aliases: ['erc green', 'eleanor roosevelt college green', 'roosevelt green'],
+  },
   {
     displayName: 'Price Center',
     buildingName: 'Price Center',
     helperText: 'Near Library Walk and the UC San Diego Student Center.',
     coordinates: { latitude: 32.8794, longitude: -117.2361 },
-    aliases: ['price center', 'price center east ballroom', 'price center east', 'price center west'],
+    aliases: ['price center', 'price center east ballroom', 'price center east', 'price center west', 'price center 2nd floor', 'price center, 2nd floor, 2.425'],
   },
   {
     displayName: 'Geisel Library',
@@ -141,12 +249,25 @@ const LOCATION_ALIASES: LocationAlias[] = [
 function resolveAlias(query: string): ResolvedLocation | null {
   let bestAlias: LocationAlias | null = null
   let bestScore = 0
+  let bestSpecificity = 0
+  const normalizedQuery = normalizeLocationText(query)
 
   for (const alias of LOCATION_ALIASES) {
-    const score = scoreTextMatch(query, alias.displayName, alias.buildingName, ...alias.aliases)
-    if (score > bestScore) {
+    const aliasPhrases = [alias.displayName, alias.buildingName, ...alias.aliases].filter(Boolean) as string[]
+    const score = scoreTextMatch(query, ...aliasPhrases)
+    const phraseBonus = aliasPhrases.some((phrase) => {
+      const normalizedPhrase = normalizeLocationText(phrase)
+      return normalizedPhrase.length > 0 && normalizedQuery.includes(normalizedPhrase)
+    })
+      ? 0.08
+      : 0
+    const boostedScore = Math.min(1, score + phraseBonus)
+    const specificity = Math.max(...aliasPhrases.map((phrase) => normalizeLocationText(phrase).length), 0)
+
+    if (boostedScore > bestScore || (boostedScore === bestScore && specificity > bestSpecificity)) {
       bestAlias = alias
-      bestScore = score
+      bestScore = boostedScore
+      bestSpecificity = specificity
     }
   }
 
@@ -262,29 +383,47 @@ export async function resolveLocation(
   query: string,
   options: ResolveLocationOptions = {},
 ): Promise<ResolvedLocation> {
-  const featureMatch = resolveFromFeatureLayer(query, options)
-  if (featureMatch) {
-    return featureMatch
+  const cacheKey = normalizeLocationText(query)
+  const canUseCache = !options.mapRuntime && Boolean(cacheKey)
+
+  if (canUseCache) {
+    const cached = resolutionCache.get(cacheKey)
+    if (cached) {
+      return cached
+    }
   }
 
-  const searchMatch = await searchWithArcGIS(query, options).catch(() => null)
-  if (searchMatch) {
-    return searchMatch
+  const resolutionPromise = (async () => {
+    const featureMatch = resolveFromFeatureLayer(query, options)
+    if (featureMatch) {
+      return featureMatch
+    }
+
+    const aliasMatch = resolveAlias(query)
+    if (aliasMatch) {
+      return aliasMatch
+    }
+
+    const searchMatch = await searchWithArcGIS(query, options).catch(() => null)
+    if (searchMatch) {
+      return searchMatch
+    }
+
+    return {
+      query,
+      displayName: query,
+      coordinates: UCSD_CAMPUS_CENTER,
+      helperText: 'We could not match this exactly, so the map is centered on the middle of campus.',
+      source: 'fallback' as const,
+      confidence: 0.2,
+    }
+  })()
+
+  if (canUseCache) {
+    resolutionCache.set(cacheKey, resolutionPromise)
   }
 
-  const aliasMatch = resolveAlias(query)
-  if (aliasMatch) {
-    return aliasMatch
-  }
-
-  return {
-    query,
-    displayName: query,
-    coordinates: UCSD_CAMPUS_CENTER,
-    helperText: 'We could not match this exactly, so the map is centered on the middle of campus.',
-    source: 'fallback',
-    confidence: 0.2,
-  }
+  return resolutionPromise
 }
 
 export function getWhereToGoCopy(location: ResolvedLocation) {
@@ -304,4 +443,3 @@ export function getWhereToGoCopy(location: ResolvedLocation) {
 export function getResolvedBuildingText(location: ResolvedLocation) {
   return location.buildingName ?? location.displayName
 }
-

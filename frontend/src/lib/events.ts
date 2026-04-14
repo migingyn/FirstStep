@@ -1,4 +1,4 @@
-import type { Event } from '@/data/mockData'
+import { mockEvents, type Event } from '@/data/mockData'
 import { supabase } from '@/lib/supabase'
 
 interface EventRecord {
@@ -52,18 +52,29 @@ export async function getEvents(): Promise<Event[]> {
     .order('start_time', { ascending: true })
 
   if (error) {
-    throw error
+    console.warn('Falling back to bundled mock events because Supabase events could not be loaded.', error)
+    return mockEvents
   }
 
-  return (data ?? []).map(mapEventRecord)
+  if (!data?.length) {
+    console.warn('Supabase returned no events. Falling back to bundled mock events.')
+    return mockEvents
+  }
+
+  return data.map(mapEventRecord)
 }
 
 export async function getEventById(eventId: string): Promise<Event | null> {
   const { data, error } = await supabase.from('events').select('*').eq('id', eventId).maybeSingle()
 
   if (error) {
-    throw error
+    console.warn(`Falling back to bundled mock event for ${eventId}.`, error)
+    return mockEvents.find((event) => event.id === eventId) ?? null
   }
 
-  return data ? mapEventRecord(data) : null
+  if (!data) {
+    return mockEvents.find((event) => event.id === eventId) ?? null
+  }
+
+  return mapEventRecord(data)
 }
