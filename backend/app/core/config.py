@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -12,9 +12,7 @@ class Settings(BaseSettings):
 
     # Supabase
     SUPABASE_URL: str
-    SUPABASE_SERVICE_ROLE_KEY: str = Field(
-        validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY")
-    )
+    SUPABASE_SERVICE_ROLE_KEY: str
 
     # Browser Use
     BROWSER_USE_API_KEY: str | None = None

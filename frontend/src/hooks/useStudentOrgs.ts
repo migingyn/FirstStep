@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { getStudentOrgs } from '@/lib/studentOrgs'
 import type { StudentOrg } from '@/data/mockData'
 
 export function useStudentOrgsQuery() {
-  return useQuery({
+  return useQuery<StudentOrg[]>({
     queryKey: ['student-orgs'],
-    queryFn: () => api.get<StudentOrg[]>('/student-orgs'),
+    queryFn: () => getStudentOrgs(),
   })
 }

@@ -22,12 +22,12 @@ export default function StudentOrgs() {
         </div>
 
         {isLoading && (
-          <p className="text-sm text-muted-foreground mb-6">Loading organizations from the backend...</p>
+          <p className="text-sm text-muted-foreground mb-6">Loading organizations...</p>
         )}
 
         {isError && (
           <p className="text-sm text-muted-foreground mb-6">
-            Backend unavailable right now, showing the built-in organization list instead.
+            Could not load the latest organization list. Showing the built-in list instead.
           </p>
         )}
 

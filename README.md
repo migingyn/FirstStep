@@ -94,7 +94,7 @@ FirstStep/
    API_PREFIX="/api"
    ALLOWED_ORIGINS="http://localhost:5173"
    SUPABASE_URL=https://your-project-ref.supabase.co
-   SUPABASE_SECRET_KEY=your-supabase-service-role-key
+   SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
    BROWSER_USE_API_KEY=your-browser-use-api-key  # Optional
    ```
 
@@ -179,14 +179,9 @@ No additional setup required. Uses Supabase's built-in email authentication.
 
 ## API Endpoints
 
-### Events
-- `GET /api/events` - List all events with recommendations
-- `GET /api/events/{id}` - Get event details
-- `POST /api/events/{id}/rsvp` - RSVP to an event
-
-### Student Organizations
-- `GET /api/student-orgs` - List all organizations
-- `GET /api/student-orgs/{id}` - Get organization details
+> Most reads (events, clubs, profiles, RSVPs, progress) go directly from the
+> frontend to Supabase using the JS SDK and row-level security. The FastAPI
+> backend is optional and only needed for the Browser Use endpoint.
 
 ### Browser Automation (Optional)
 - `POST /api/browser-use/run` - Execute a browser task
@@ -243,37 +238,3 @@ Both use stable UUIDs so event IDs match across the application, allowing route 
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
-
-Build verification used during this implementation:
-
-```bash
-cd frontend
-npm run build
-```
-
-### Auth implementation requirement block
-
-```text
-You are building the authentication layer for a web app.
-
-Requirements:
-Email/password auth
-Google OAuth 
-Session handling + protected routes
-
-Include:
-Auth provider setup (e.g., Supabase/Auth0/Firebase)
-Basic signup / login / logout UI
-Logic for redirecting unauthenticated users
-
-Output:
-Pages: Sign Up, Sign In, Dashboard (protected)
-Code with placeholder secrets / env values
-```
-
-### Assumptions
-
-- Supabase email confirmation may be enabled. If it is, email signup creates the account and prompts the user to confirm email before continuing onboarding.
-- `events.id` uses UUIDs to match the recommended progress-table foreign keys.
-- An `rsvp_count` column was added to `events` to preserve the current attendee-count UI without redesigning the cards or detail page.
-- The current client still expects the existing FastAPI `VITE_API_URL`, so that env var remains documented even though the event and auth flow now use Supabase directly.
